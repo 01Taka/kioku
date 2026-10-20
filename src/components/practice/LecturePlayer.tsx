@@ -224,97 +224,115 @@ export function LecturePlayer({
       </div>
 
       {/* メインカード表示領域 */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-2xl w-full mx-auto">
-        {/* フラッシュカード本体（クリックでめくる） */}
-        <div
-          onClick={handleFlip}
-          className={`w-full min-h-[320px] max-h-[480px] bg-slate-900 border rounded-2xl p-8 flex flex-col justify-between shadow-2xl cursor-pointer transition-all duration-200 hover:border-slate-700 ${
-            isFlipped
-              ? "border-indigo-500/60 bg-gradient-to-b from-slate-900 to-indigo-950/20"
-              : "border-slate-800"
-          }`}
-        >
-          {/* カード上部インジケータ */}
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
-              {isFlipped ? "裏面（解答）" : "表面（問題）"}
-            </span>
-            <span className="text-[11px] text-slate-500">クリックまたは Space でめくる</span>
-          </div>
-
-          {/* カード本文テキスト */}
-          <div className="my-auto py-6 overflow-y-auto max-h-[260px] text-center">
-            {isFlipped ? (
-              <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
-                {currentCard.back}
-              </p>
-            ) : (
-              <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
-                {currentCard.front}
-              </p>
-            )}
-          </div>
-
-          {/* カード下部インジケータ */}
-          <div className="text-center text-[11px] text-slate-500">
-            {isFlipped ? (
-              <span className="text-indigo-400">もう一度クリックすると問題面に戻ります</span>
-            ) : (
-              <span>クリックして解答を表示</span>
-            )}
-          </div>
-        </div>
-
-        {/* コントロール・アクションボタン群（4つの機能） */}
-        <div className="mt-8 w-full flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* ④ 前のカードに戻る */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-2xl w-full mx-auto">
+        {/* ④ カード左上の「戻る」ボタン ＆ ガイド */}
+        <div className="w-full flex items-center justify-between mb-3">
           <button
             type="button"
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700/60 transition cursor-pointer flex items-center justify-center space-x-1"
+            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 hover:text-white text-xs font-medium rounded-lg border border-slate-800 transition cursor-pointer flex items-center space-x-1 shadow-sm"
             title="前のカードに戻る (↑ / Backspace)"
           >
             <span>← 前に戻る</span>
           </button>
 
-          {/* ① カードをめくる */}
-          <button
-            type="button"
+          <span className="text-[11px] text-slate-500">
+            カードをクリックしてめくる（Space）
+          </span>
+        </div>
+
+        {/* ① カードをめくる 3D フリップアニメーション */}
+        <div
+          className="w-full min-h-[320px] max-h-[460px] h-72 sm:h-80"
+          style={{ perspective: "1000px" }}
+        >
+          <div
             onClick={handleFlip}
-            className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-semibold rounded-xl transition cursor-pointer flex items-center justify-center space-x-1.5"
-            title="表面・裏面を切り替える (Space / Enter)"
+            className="relative w-full h-full cursor-pointer"
+            style={{
+              transformStyle: "preserve-3d",
+              transition: "transform 0.35s ease-in-out",
+              transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+            }}
           >
-            <span>{isFlipped ? "問題に戻す" : "解答を表示"}</span>
-          </button>
-
-          {/* 回答ボタン（③ 間違い / ② 正解） */}
-          <div className="flex items-center space-x-3 w-full sm:w-auto">
-            {/* ③ 間違いを選択して次のカード */}
-            <button
-              type="button"
-              onClick={handleIncorrect}
-              className="flex-1 sm:flex-none px-5 py-2.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/80 text-xs font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-1.5"
-              title="間違い (← / 1)"
+            {/* 表面 (問題面) */}
+            <div
+              className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-slate-700 transition-colors"
+              style={{ backfaceVisibility: "hidden" }}
             >
-              <span>❌ 間違い</span>
-            </button>
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
+                  表面（問題）
+                </span>
+                <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
+              </div>
 
-            {/* ② 正解を選択して次のカード */}
-            <button
-              type="button"
-              onClick={handleCorrect}
-              className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-1.5"
-              title="正解 (→ / 2)"
+              <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
+                <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
+                  {currentCard.front}
+                </p>
+              </div>
+
+              <div className="text-center text-[11px] text-slate-500">
+                タップして解答を表示
+              </div>
+            </div>
+
+            {/* 裏面 (解答面) */}
+            <div
+              className="absolute inset-0 bg-gradient-to-b from-slate-900 to-indigo-950/30 border border-indigo-500/50 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-indigo-500/70 transition-colors"
+              style={{
+                backfaceVisibility: "hidden",
+                transform: "rotateY(180deg)",
+              }}
             >
-              <span>⭕ 正解</span>
-              <ChevronRightIcon size={14} />
-            </button>
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-semibold uppercase tracking-wider text-[11px] text-indigo-300">
+                  裏面（解答）
+                </span>
+                <span className="text-[11px] text-indigo-400 font-mono">A.{currentIndex + 1}</span>
+              </div>
+
+              <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
+                <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
+                  {currentCard.back}
+                </p>
+              </div>
+
+              <div className="text-center text-[11px] text-indigo-400/80">
+                タップして問題面に戻す
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* ③ カード下部に「間違い」と「正解」をフルワイドで横並びに配置 */}
+        <div className="mt-6 w-full grid grid-cols-2 gap-3 sm:gap-4">
+          {/* ③ 間違いを選択して次のカード */}
+          <button
+            type="button"
+            onClick={handleIncorrect}
+            className="w-full py-3.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/80 text-sm font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-2"
+            title="間違い (← / 1)"
+          >
+            <span>❌ 間違い</span>
+          </button>
+
+          {/* ② 正解を選択して次のカード */}
+          <button
+            type="button"
+            onClick={handleCorrect}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+            title="正解 (→ / 2)"
+          >
+            <span>⭕ 正解</span>
+            <ChevronRightIcon size={16} />
+          </button>
+        </div>
+
         {/* キーボードショートカットガイド */}
-        <div className="mt-6 text-center text-[11px] text-slate-500 hidden sm:block">
+        <div className="mt-5 text-center text-[11px] text-slate-500 hidden sm:block">
           キー操作: <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd> めくる /{" "}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> 間違い /{" "}
           <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> 正解 /{" "}

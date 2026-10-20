@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronRightIcon, XIcon } from "../icons";
+import { XIcon } from "../icons";
 
 export interface PracticeCardItem {
   id: string;
@@ -22,6 +22,7 @@ type SlideAnimationState =
   | "idle"
   | "slide-out-up"
   | "prepare-bottom"
+  | "slide-in"
   | "slide-out-down"
   | "prepare-top";
 
@@ -81,15 +82,20 @@ export function LecturePlayer({
       if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
 
       transitionTimeoutRef.current = window.setTimeout(() => {
-        // 2. 次のカードに切り替え、下側（prepare-bottom）にスタンバイ
+        // 2. カードが完全に非表示になったタイミングで、インスタントに表面（0deg）へ戻す
         setCurrentIndex((prev) => prev + 1);
         setIsFlipped(false);
         setSlideState("prepare-bottom");
 
-        // 3. 次の描画フレームで中央へスライドイン（idle）
+        // 3. 次の描画フレームで、既に表面になった状態で下からスライドイン開始
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            setSlideState("idle");
+            setSlideState("slide-in");
+
+            // 4. スライドイン完了後に idle へ復帰
+            transitionTimeoutRef.current = window.setTimeout(() => {
+              setSlideState("idle");
+            }, 200);
           });
         });
       }, 160);
@@ -124,7 +130,11 @@ export function LecturePlayer({
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          setSlideState("idle");
+          setSlideState("slide-in");
+
+          transitionTimeoutRef.current = window.setTimeout(() => {
+            setSlideState("idle");
+          }, 200);
         });
       });
     }, 160);
@@ -192,12 +202,18 @@ export function LecturePlayer({
           opacity: 0,
           transition: "none",
         };
+      case "slide-in":
+        return {
+          transform: "translateY(0)",
+          opacity: 1,
+          transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out",
+        };
       case "idle":
       default:
         return {
           transform: "translateY(0)",
           opacity: 1,
-          transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out",
+          transition: "none",
         };
     }
   };
@@ -334,7 +350,7 @@ export function LecturePlayer({
 
         {/* スライドイン・アウト用ラッパー（カードのみが上下にスライド移動する） */}
         <div
-          className="w-full min-h-[320px] max-h-[460px] h-72 sm:h-80 will-change-transform"
+          className="w-full min-h-80 max-h-115 h-72 sm:h-80 will-change-transform"
           style={getSlideStyle()}
         >
           {/* ① 3D フリップアニメーション用コンテナ */}
@@ -347,7 +363,8 @@ export function LecturePlayer({
               className="relative w-full h-full cursor-pointer"
               style={{
                 transformStyle: "preserve-3d",
-                transition: "transform 0.35s ease-in-out",
+                transition:
+                  slideState === "idle" ? "transform 0.35s ease-in-out" : "none",
                 transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
               }}
             >
@@ -363,7 +380,7 @@ export function LecturePlayer({
                   <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
+                <div className="my-auto py-4 overflow-y-auto max-h-50 text-center">
                   <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
                     {currentCard.front}
                   </p>
@@ -376,7 +393,7 @@ export function LecturePlayer({
 
               {/* 裏面 (解答面) */}
               <div
-                className="absolute inset-0 bg-gradient-to-b from-slate-900 to-indigo-950/30 border border-indigo-500/50 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-indigo-500/70 transition-colors"
+                className="absolute inset-0 bg-linear-to-b from-slate-900 to-indigo-950/30 border border-indigo-500/50 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-indigo-500/70 transition-colors"
                 style={{
                   backfaceVisibility: "hidden",
                   transform: "rotateY(180deg)",
@@ -389,7 +406,7 @@ export function LecturePlayer({
                   <span className="text-[11px] text-indigo-400 font-mono">A.{currentIndex + 1}</span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
+                <div className="my-auto py-4 overflow-y-auto max-h-50 text-center">
                   <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
                     {currentCard.back}
                   </p>
@@ -425,7 +442,6 @@ export function LecturePlayer({
             title="正解 (→ / 2)"
           >
             <span>⭕ 正解</span>
-            <ChevronRightIcon size={16} />
           </button>
         </div>
 

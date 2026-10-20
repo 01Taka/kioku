@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronRightIcon, XIcon } from "../icons";
 
 export interface PracticeCardItem {
@@ -18,6 +18,13 @@ export interface LecturePlayerProps {
   onClose: () => void;
 }
 
+type SlideAnimationState =
+  | "idle"
+  | "slide-out-up"
+  | "prepare-bottom"
+  | "slide-out-down"
+  | "prepare-top";
+
 export function LecturePlayer({
   lectureTitle,
   cards,
@@ -29,54 +36,99 @@ export function LecturePlayer({
   const [isFlipped, setIsFlipped] = useState(false);
   const [answers, setAnswers] = useState<Record<string, "correct" | "incorrect">>({});
   const [isCompleted, setIsCompleted] = useState(false);
+  const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
+
+  const transitionTimeoutRef = useRef<number | null>(null);
 
   const totalCards = cards.length;
   const currentCard = cards[currentIndex];
 
-  // ① カードをめくる
-  const handleFlip = useCallback(() => {
-    setIsFlipped((prev) => !prev);
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+      }
+    };
   }, []);
 
-  // 次のカードへ進む内部処理
+  // ① カードをめくる
+  const handleFlip = useCallback(() => {
+    if (slideState !== "idle") return;
+    setIsFlipped((prev) => !prev);
+  }, [slideState]);
+
+  // 次のカードへ進む内部処理（上にスライドアウト ➔ 下からスライドイン）
   const proceedToNext = useCallback(
     (cardId: string, result: "correct" | "incorrect") => {
+      if (slideState !== "idle") return;
+
       // 回答情報の伝達
       onAnswer?.(cardId, result);
 
       const nextAnswers = { ...answers, [cardId]: result };
       setAnswers(nextAnswers);
 
-      if (currentIndex + 1 < totalCards) {
-        setCurrentIndex((prev) => prev + 1);
-        setIsFlipped(false);
-      } else {
+      if (currentIndex + 1 >= totalCards) {
         setIsCompleted(true);
         onFinish?.(nextAnswers);
+        return;
       }
+
+      // 1. 元のカードが上にスライドアウト
+      setSlideState("slide-out-up");
+
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+
+      transitionTimeoutRef.current = window.setTimeout(() => {
+        // 2. 次のカードに切り替え、下側（prepare-bottom）にスタンバイ
+        setCurrentIndex((prev) => prev + 1);
+        setIsFlipped(false);
+        setSlideState("prepare-bottom");
+
+        // 3. 次の描画フレームで中央へスライドイン（idle）
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setSlideState("idle");
+          });
+        });
+      }, 160);
     },
-    [answers, currentIndex, totalCards, onAnswer, onFinish],
+    [slideState, answers, currentIndex, totalCards, onAnswer, onFinish],
   );
 
   // ② 正解を選択して次のカード
   const handleCorrect = useCallback(() => {
-    if (!currentCard) return;
+    if (!currentCard || slideState !== "idle") return;
     proceedToNext(currentCard.id, "correct");
-  }, [currentCard, proceedToNext]);
+  }, [currentCard, slideState, proceedToNext]);
 
   // ③ 間違いを選択して次のカード
   const handleIncorrect = useCallback(() => {
-    if (!currentCard) return;
+    if (!currentCard || slideState !== "idle") return;
     proceedToNext(currentCard.id, "incorrect");
-  }, [currentCard, proceedToNext]);
+  }, [currentCard, slideState, proceedToNext]);
 
-  // ④ 前のカードに戻る
+  // ④ 前のカードに戻る（下へスライドアウト ➔ 上からスライドイン）
   const handlePrev = useCallback(() => {
-    if (currentIndex > 0) {
+    if (currentIndex <= 0 || slideState !== "idle") return;
+
+    setSlideState("slide-out-down");
+
+    if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+
+    transitionTimeoutRef.current = window.setTimeout(() => {
       setCurrentIndex((prev) => prev - 1);
       setIsFlipped(false);
-    }
-  }, [currentIndex]);
+      setSlideState("prepare-top");
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setSlideState("idle");
+        });
+      });
+    }, 160);
+  }, [currentIndex, slideState]);
 
   // 最初からやり直す
   const handleRestart = () => {
@@ -84,6 +136,7 @@ export function LecturePlayer({
     setIsFlipped(false);
     setAnswers({});
     setIsCompleted(false);
+    setSlideState("idle");
   };
 
   // キーボード操作対応
@@ -111,6 +164,43 @@ export function LecturePlayer({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleFlip, handleCorrect, handleIncorrect, handlePrev, isCompleted, onClose]);
+
+  // スライドイン・アウトのアニメーションスタイル
+  const getSlideStyle = () => {
+    switch (slideState) {
+      case "slide-out-up":
+        return {
+          transform: "translateY(-48px)",
+          opacity: 0,
+          transition: "transform 0.16s ease-in, opacity 0.16s ease-in",
+        };
+      case "prepare-bottom":
+        return {
+          transform: "translateY(48px)",
+          opacity: 0,
+          transition: "none",
+        };
+      case "slide-out-down":
+        return {
+          transform: "translateY(48px)",
+          opacity: 0,
+          transition: "transform 0.16s ease-in, opacity 0.16s ease-in",
+        };
+      case "prepare-top":
+        return {
+          transform: "translateY(-48px)",
+          opacity: 0,
+          transition: "none",
+        };
+      case "idle":
+      default:
+        return {
+          transform: "translateY(0)",
+          opacity: 1,
+          transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out",
+        };
+    }
+  };
 
   // カードが0枚の場合
   if (totalCards === 0) {
@@ -225,12 +315,12 @@ export function LecturePlayer({
 
       {/* メインカード表示領域 */}
       <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-2xl w-full mx-auto">
-        {/* ④ カード左上の「戻る」ボタン ＆ ガイド */}
+        {/* ボタン系はその場に留まる：カード左上の「戻る」ボタン ＆ ガイド */}
         <div className="w-full flex items-center justify-between mb-3">
           <button
             type="button"
             onClick={handlePrev}
-            disabled={currentIndex === 0}
+            disabled={currentIndex === 0 || slideState !== "idle"}
             className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 hover:text-white text-xs font-medium rounded-lg border border-slate-800 transition cursor-pointer flex items-center space-x-1 shadow-sm"
             title="前のカードに戻る (↑ / Backspace)"
           >
@@ -242,78 +332,85 @@ export function LecturePlayer({
           </span>
         </div>
 
-        {/* ① カードをめくる 3D フリップアニメーション */}
+        {/* スライドイン・アウト用ラッパー（カードのみが上下にスライド移動する） */}
         <div
-          className="w-full min-h-[320px] max-h-[460px] h-72 sm:h-80"
-          style={{ perspective: "1000px" }}
+          className="w-full min-h-[320px] max-h-[460px] h-72 sm:h-80 will-change-transform"
+          style={getSlideStyle()}
         >
+          {/* ① 3D フリップアニメーション用コンテナ */}
           <div
-            onClick={handleFlip}
-            className="relative w-full h-full cursor-pointer"
-            style={{
-              transformStyle: "preserve-3d",
-              transition: "transform 0.35s ease-in-out",
-              transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-            }}
+            className="w-full h-full"
+            style={{ perspective: "1000px" }}
           >
-            {/* 表面 (問題面) */}
             <div
-              className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-slate-700 transition-colors"
-              style={{ backfaceVisibility: "hidden" }}
-            >
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
-                  表面（問題）
-                </span>
-                <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
-              </div>
-
-              <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
-                <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
-                  {currentCard.front}
-                </p>
-              </div>
-
-              <div className="text-center text-[11px] text-slate-500">
-                タップして解答を表示
-              </div>
-            </div>
-
-            {/* 裏面 (解答面) */}
-            <div
-              className="absolute inset-0 bg-gradient-to-b from-slate-900 to-indigo-950/30 border border-indigo-500/50 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-indigo-500/70 transition-colors"
+              onClick={handleFlip}
+              className="relative w-full h-full cursor-pointer"
               style={{
-                backfaceVisibility: "hidden",
-                transform: "rotateY(180deg)",
+                transformStyle: "preserve-3d",
+                transition: "transform 0.35s ease-in-out",
+                transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
               }}
             >
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold uppercase tracking-wider text-[11px] text-indigo-300">
-                  裏面（解答）
-                </span>
-                <span className="text-[11px] text-indigo-400 font-mono">A.{currentIndex + 1}</span>
+              {/* 表面 (問題面) */}
+              <div
+                className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-slate-700 transition-colors"
+                style={{ backfaceVisibility: "hidden" }}
+              >
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
+                    表面（問題）
+                  </span>
+                  <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
+                </div>
+
+                <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
+                  <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
+                    {currentCard.front}
+                  </p>
+                </div>
+
+                <div className="text-center text-[11px] text-slate-500">
+                  タップして解答を表示
+                </div>
               </div>
 
-              <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
-                <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
-                  {currentCard.back}
-                </p>
-              </div>
+              {/* 裏面 (解答面) */}
+              <div
+                className="absolute inset-0 bg-gradient-to-b from-slate-900 to-indigo-950/30 border border-indigo-500/50 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-indigo-500/70 transition-colors"
+                style={{
+                  backfaceVisibility: "hidden",
+                  transform: "rotateY(180deg)",
+                }}
+              >
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-semibold uppercase tracking-wider text-[11px] text-indigo-300">
+                    裏面（解答）
+                  </span>
+                  <span className="text-[11px] text-indigo-400 font-mono">A.{currentIndex + 1}</span>
+                </div>
 
-              <div className="text-center text-[11px] text-indigo-400/80">
-                タップして問題面に戻す
+                <div className="my-auto py-4 overflow-y-auto max-h-[200px] text-center">
+                  <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
+                    {currentCard.back}
+                  </p>
+                </div>
+
+                <div className="text-center text-[11px] text-indigo-400/80">
+                  タップして問題面に戻す
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ③ カード下部に「間違い」と「正解」をフルワイドで横並びに配置 */}
+        {/* ボタン系はその場に留まる：フルワイド横並びの回答ボタン */}
         <div className="mt-6 w-full grid grid-cols-2 gap-3 sm:gap-4">
           {/* ③ 間違いを選択して次のカード */}
           <button
             type="button"
             onClick={handleIncorrect}
-            className="w-full py-3.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/80 text-sm font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-2"
+            disabled={slideState !== "idle"}
+            className="w-full py-3.5 bg-rose-950/60 hover:bg-rose-900/80 disabled:opacity-60 text-rose-300 border border-rose-800/80 text-sm font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-2"
             title="間違い (← / 1)"
           >
             <span>❌ 間違い</span>
@@ -323,7 +420,8 @@ export function LecturePlayer({
           <button
             type="button"
             onClick={handleCorrect}
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+            disabled={slideState !== "idle"}
+            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
             title="正解 (→ / 2)"
           >
             <span>⭕ 正解</span>

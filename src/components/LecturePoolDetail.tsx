@@ -3,6 +3,7 @@ import { useAppStore } from "../store/useAppStore";
 import type { LectureCardPhase, PriorityMode, Card } from "../types/schema";
 import { SYSTEM_CONSTANTS, isWaitingCardLocked } from "../types/schema";
 import { AiBatchImportModal } from "./AiBatchImportModal";
+import { LecturePlayer } from "./practice/LecturePlayer";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
 import {
   PlusIcon,
@@ -16,6 +17,7 @@ import {
   SparklesIcon,
   UndoIcon,
   SlidersIcon,
+  PlayIcon,
 } from "./icons";
 
 export function LecturePoolDetail() {
@@ -43,6 +45,7 @@ export function LecturePoolDetail() {
 
   // AI一括取り込みモーダル状態
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const [importInitialText, setImportInitialText] = useState("");
   const [lastImportNotification, setLastImportNotification] = useState<{
     bundleId: string;
@@ -251,6 +254,17 @@ export function LecturePoolDetail() {
 
           {/* 講義操作・設定 */}
           <div className="flex items-center space-x-2 text-xs">
+            {/* 演習開始ボタン */}
+            <button
+              onClick={() => setIsPracticeOpen(true)}
+              disabled={lectureCards.length === 0}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md shadow-emerald-600/30 flex items-center space-x-1.5 transition cursor-pointer"
+              title="この講義のカードを演習する"
+            >
+              <PlayIcon size={12} />
+              <span>演習スタート</span>
+            </button>
+
             {/* 優先度設定 */}
             <div className="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700/60">
               <span className="text-slate-400">優先度:</span>
@@ -744,6 +758,21 @@ export function LecturePoolDetail() {
           onSuccess={(bundleId, count) => {
             setLastImportNotification({ bundleId, count });
           }}
+        />
+      )}
+
+      {/* 講義カード演習プレイヤー（疎結合） */}
+      {isPracticeOpen && (
+        <LecturePlayer
+          lectureTitle={`${selectedCourse.name} - ${selectedLecture.name}`}
+          cards={lectureCards
+            .filter((c) => !c.isSuspended)
+            .map((c) => ({ id: c.id, front: c.front, back: c.back }))}
+          onAnswer={(cardId, result) => {
+            // 情報伝達のみ（FSRS計算やフェーズ変更等の副作用は一切起こさない）
+            console.log(`[Practice] Card ${cardId}: ${result}`);
+          }}
+          onClose={() => setIsPracticeOpen(false)}
         />
       )}
     </main>

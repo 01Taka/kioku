@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { XIcon } from "../icons";
+import { XIcon, ShuffleIcon } from "../icons";
 
 export interface PracticeCardItem {
   id: string;
@@ -33,6 +33,7 @@ export function LecturePlayer({
   onFinish,
   onClose,
 }: LecturePlayerProps) {
+  const [activeCards, setActiveCards] = useState<PracticeCardItem[]>(cards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [answers, setAnswers] = useState<Record<string, "correct" | "incorrect">>({});
@@ -41,8 +42,35 @@ export function LecturePlayer({
 
   const transitionTimeoutRef = useRef<number | null>(null);
 
-  const totalCards = cards.length;
-  const currentCard = cards[currentIndex];
+  // cards prop が変わった場合は同期
+  useEffect(() => {
+    setActiveCards(cards);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setAnswers({});
+    setIsCompleted(false);
+  }, [cards]);
+
+  const totalCards = activeCards.length;
+  const currentCard = activeCards[currentIndex];
+
+  // カードをシャッフルして最初から開始する
+  const handleShuffle = useCallback(() => {
+    if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+
+    const shuffled = [...activeCards];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    setActiveCards(shuffled);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setAnswers({});
+    setIsCompleted(false);
+    setSlideState("idle");
+  }, [activeCards]);
 
   // クリーンアップ
   useEffect(() => {
@@ -275,12 +303,20 @@ export function LecturePlayer({
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <button
               onClick={handleRestart}
               className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
             >
               最初からもう一度
+            </button>
+            <button
+              onClick={handleShuffle}
+              className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white text-xs font-semibold rounded-xl border border-indigo-500/30 transition cursor-pointer flex items-center justify-center space-x-1.5"
+              title="カードをシャッフルして再開"
+            >
+              <ShuffleIcon size={14} />
+              <span>シャッフル</span>
             </button>
             <button
               onClick={onClose}
@@ -307,7 +343,19 @@ export function LecturePlayer({
           </h2>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
+          {/* シャッフルして最初から始めるボタン */}
+          <button
+            type="button"
+            onClick={handleShuffle}
+            disabled={totalCards <= 1}
+            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg border border-slate-700/60 text-xs font-medium flex items-center space-x-1.5 transition cursor-pointer"
+            title="カードの並び順をシャッフルして最初から始める"
+          >
+            <ShuffleIcon size={13} className="text-indigo-400" />
+            <span>シャッフル</span>
+          </button>
+
           <span className="text-xs font-mono text-slate-400">
             {currentIndex + 1} / {totalCards}
           </span>

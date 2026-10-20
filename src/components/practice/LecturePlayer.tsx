@@ -189,10 +189,20 @@ export function LecturePlayer({
         handleFlip();
       } else if (e.key === "ArrowRight" || e.key === "2") {
         e.preventDefault();
-        handleCorrect();
+        // 表のときは、右矢印でもカードをめくる
+        if (!isFlipped) {
+          handleFlip();
+        } else {
+          handleCorrect();
+        }
       } else if (e.key === "ArrowLeft" || e.key === "1") {
         e.preventDefault();
-        handleIncorrect();
+        // 表のときは、左矢印でもカードをめくる
+        if (!isFlipped) {
+          handleFlip();
+        } else {
+          handleIncorrect();
+        }
       } else if (e.key === "ArrowUp" || e.key === "Backspace") {
         e.preventDefault();
         handlePrev();
@@ -201,7 +211,7 @@ export function LecturePlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleFlip, handleCorrect, handleIncorrect, handlePrev, isCompleted, onClose]);
+  }, [handleFlip, handleCorrect, handleIncorrect, handlePrev, isFlipped, isCompleted, onClose]);
 
   // スライドイン・アウトのアニメーションスタイル
   const getSlideStyle = () => {
@@ -468,37 +478,60 @@ export function LecturePlayer({
           </div>
         </div>
 
-        {/* ボタン系はその場に留まる：フルワイド横並びの回答ボタン */}
-        <div className="mt-6 w-full grid grid-cols-2 gap-3 sm:gap-4">
-          {/* ③ 間違いを選択して次のカード */}
-          <button
-            type="button"
-            onClick={handleIncorrect}
-            disabled={slideState !== "idle"}
-            className="w-full py-3.5 bg-rose-950/60 hover:bg-rose-900/80 disabled:opacity-60 text-rose-300 border border-rose-800/80 text-sm font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-2"
-            title="間違い (← / 1)"
-          >
-            <span>❌ 間違い</span>
-          </button>
+        {/* ボタン系（表のときは「解答を表示」1つのボタン、裏のときは「間違い」「正解」の2つのボタン） */}
+        <div className="mt-6 w-full h-[52px]">
+          {!isFlipped ? (
+            <button
+              type="button"
+              onClick={handleFlip}
+              disabled={slideState !== "idle"}
+              className="w-full h-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+              title="解答を表示して裏にする (Space / ← / →)"
+            >
+              <span>解答を表示</span>
+            </button>
+          ) : (
+            <div className="w-full h-full grid grid-cols-2 gap-3 sm:gap-4">
+              {/* ③ 間違いを選択して次のカード */}
+              <button
+                type="button"
+                onClick={handleIncorrect}
+                disabled={slideState !== "idle"}
+                className="w-full h-full bg-rose-950/60 hover:bg-rose-900/80 disabled:opacity-60 text-rose-300 border border-rose-800/80 text-sm font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-2"
+                title="間違い (← / 1)"
+              >
+                <span>❌ 間違い</span>
+              </button>
 
-          {/* ② 正解を選択して次のカード */}
-          <button
-            type="button"
-            onClick={handleCorrect}
-            disabled={slideState !== "idle"}
-            className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
-            title="正解 (→ / 2)"
-          >
-            <span>⭕ 正解</span>
-          </button>
+              {/* ② 正解を選択して次のカード */}
+              <button
+                type="button"
+                onClick={handleCorrect}
+                disabled={slideState !== "idle"}
+                className="w-full h-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+                title="正解 (→ / 2)"
+              >
+                <span>⭕ 正解</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* キーボードショートカットガイド */}
         <div className="mt-5 text-center text-[11px] text-slate-500 hidden sm:block">
-          キー操作: <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd> めくる /{" "}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> 間違い /{" "}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> 正解 /{" "}
-          <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">↑</kbd> 前に戻る
+          {!isFlipped ? (
+            <span>
+              キー操作: <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd> /{" "}
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> /{" "}
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> 解答を表示
+            </span>
+          ) : (
+            <span>
+              キー操作: <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd> 問題に戻す /{" "}
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> 間違い /{" "}
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> 正解
+            </span>
+          )}
         </div>
       </div>
     </div>

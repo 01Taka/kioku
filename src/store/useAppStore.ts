@@ -9,6 +9,7 @@ import type {
   LectureProgress,
   CourseProgress,
   FlashcardContent,
+  LectureTrainingQueueResult,
 } from "../types/schema";
 import {
   createNewCard,
@@ -18,6 +19,7 @@ import {
   isWaitingCardLocked,
   SYSTEM_CONSTANTS,
 } from "../types/schema";
+import { buildLectureTrainingQueue } from "../utils/trainingQueue";
 import { createEmptyCard } from "ts-fsrs";
 
 export function getBatchSignature(contents: FlashcardContent[]): string {
@@ -97,6 +99,11 @@ interface AppState {
   // Aggregation helpers
   getLectureProgress: (lectureId: string) => LectureProgress;
   getCourseProgress: (courseId: string) => CourseProgress;
+  getLectureTrainingQueue: (
+    lectureId: string,
+    waitingHours?: number,
+    now?: Date,
+  ) => LectureTrainingQueueResult;
 
   // Reset sample data
   loadSampleData: () => void;
@@ -489,6 +496,15 @@ export const useAppStore = create<AppState>()(
           retryCount: 0,
           dueCount: 0,
         };
+      },
+
+      getLectureTrainingQueue: (lectureId, waitingHours, now) => {
+        return buildLectureTrainingQueue(
+          get().cards,
+          lectureId,
+          waitingHours ?? SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
+          now ?? new Date(),
+        );
       },
 
       loadSampleData: () => {

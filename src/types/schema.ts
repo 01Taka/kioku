@@ -227,6 +227,16 @@ export interface LectureProgress {
   earliestUnlockAt: string | null; // 最短のロック解除予定日時（ISO 8601）
 }
 
+/** 講義特訓モードの出題対象キュー結果 */
+export interface LectureTrainingQueueResult {
+  lectureId: string;
+  cards: Card[]; // 出題対象カード一覧
+  unmemorizedCount: number; // 出題対象中の未暗記枚数
+  unlockedWaitingCount: number; // 出題対象中の待機解除枚数
+  lockedWaitingCount: number; // ロック中で出題できない待機枚数
+  earliestUnlockAt: string | null; // 最短のロック解除予定日時（ISO 8601）
+}
+
 /** 科目全体の進捗 */
 export interface CourseProgress {
   courseId: string;

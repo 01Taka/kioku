@@ -38,6 +38,7 @@ export function LecturePoolDetail() {
     setCardPhase,
     toggleCardSuspension,
     getLectureProgress,
+    getLectureTrainingQueue,
   } = useAppStore();
 
   const selectedLecture = lectures.find((l) => l.id === selectedLectureId);
@@ -62,7 +63,7 @@ export function LecturePoolDetail() {
   const [editBack, setEditBack] = useState("");
 
   // フィルター
-  const [phaseFilter, setPhaseFilter] = useState<LectureCardPhase | "ALL" | "SUSPENDED">("ALL");
+  const [phaseFilter, setPhaseFilter] = useState<LectureCardPhase | "ALL" | "SUSPENDED" | "TRAINING">("ALL");
 
   // 講義名編集状態
   const [isEditingLectureName, setIsEditingLectureName] = useState(false);
@@ -73,13 +74,20 @@ export function LecturePoolDetail() {
     return cards.filter((c) => c.lectureId === selectedLectureId);
   }, [cards, selectedLectureId]);
 
+  const trainingQueue = useMemo(() => {
+    if (!selectedLectureId) return null;
+    return getLectureTrainingQueue(selectedLectureId);
+  }, [selectedLectureId, getLectureTrainingQueue, cards]);
+
   const filteredCards = useMemo(() => {
+    const trainingCardIds = new Set(trainingQueue?.cards.map((c) => c.id) ?? []);
     return lectureCards.filter((card) => {
       if (phaseFilter === "ALL") return true;
       if (phaseFilter === "SUSPENDED") return card.isSuspended;
+      if (phaseFilter === "TRAINING") return trainingCardIds.has(card.id);
       return card.lecturePool.phase === phaseFilter;
     });
-  }, [lectureCards, phaseFilter]);
+  }, [lectureCards, phaseFilter, trainingQueue]);
 
   const progress = selectedLectureId ? getLectureProgress(selectedLectureId) : null;
 
@@ -315,7 +323,16 @@ export function LecturePoolDetail() {
         {/* 進捗プログレス統計 */}
         {progress && (
           <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              {/* 特訓可能キューサマリー */}
+              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 font-medium shadow-xs">
+                <span>⚡ 特訓可能:</span>
+                <strong className="font-mono text-white text-xs">{trainingQueue?.cards.length ?? 0}</strong>
+                <span className="text-[10px] opacity-75">
+                  (未 {trainingQueue?.unmemorizedCount ?? 0} / 解除 {trainingQueue?.unlockedWaitingCount ?? 0})
+                </span>
+              </span>
+
               <span className="flex items-center space-x-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
                 <span className="text-slate-300">未暗記: </span>
@@ -487,6 +504,15 @@ export function LecturePoolDetail() {
                 }`}
               >
                 すべて
+              </button>
+              <button
+                onClick={() => setPhaseFilter("TRAINING")}
+                className={`px-2.5 py-1 rounded transition flex items-center space-x-1 ${
+                  phaseFilter === "TRAINING" ? "bg-indigo-600 text-white font-medium shadow-xs" : "text-indigo-300 hover:text-white"
+                }`}
+                title="未暗記および待機解除済みの出題対象カード"
+              >
+                <span>⚡ 特訓可能 ({trainingQueue?.cards.length ?? 0})</span>
               </button>
               <button
                 onClick={() => setPhaseFilter("UNMEMORIZED")}

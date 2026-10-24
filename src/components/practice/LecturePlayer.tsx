@@ -479,7 +479,7 @@ export function LecturePlayer({
         </div>
 
         {/* ボタン系（表のときは「解答を表示」1つのボタン、裏のときは「間違い」「正解」の2つのボタン） */}
-        <div className="mt-6 w-full h-[52px]">
+        <div className="mt-6 w-full h-13">
           {!isFlipped ? (
             <button
               type="button"

@@ -47,10 +47,10 @@
 ### Milestone 1: 講義専用プール（短期ステージ）の特訓ライフサイクル完成
 > **目的:** 講義内でのカード特訓を行い、「未暗記 ➔ 8時間待機 ➔ 卒業」の完全な状態遷移を実装する。
 
-- [ ] **Task 1-1: 講義特訓モードの出題対象選定ロジックを実装する (Read)**
+- [x] **Task 1-1: 講義特訓モードの出題対象選定ロジックを実装する (Read)**
   - 出題対象: `phase === 'UNMEMORIZED'` または「待機時間（8h）が経過した `WAITING`」
   - 待機中（ロック中）のカードは出題キューから除外
-  - 成果物: `src/store/useAppStore.ts` (`getLectureTrainingQueue`)
+  - 成果物: `src/utils/trainingQueue.ts`, `src/store/useAppStore.ts` (`getLectureTrainingQueue`)
 - [ ] **Task 1-2: 特訓回答（〇 / ×）による3段階状態遷移を実装する (Update)**
   - 未暗記カードで正解（〇） ➔ `phase = WAITING`, `consecutiveCorrect = 1`, `lastCorrectAt = now`
   - 待機解除カードで正解（〇） ➔ 卒業処理呼び出し（Task 1-3へ）
@@ -184,7 +184,9 @@
 
 ## 🧭 直近の次のアクション（Next Step）
 
-> **Milestone 1 / Task 1-1:**  
-> **「講義特訓モードの出題対象選定ロジックを実装する（未暗記 & 8h経過待機カードの抽出）」**
-> - `src/store/useAppStore.ts` に `getLectureTrainingCards(lectureId: string)` 関数を実装
-> - `isWaitingCardLocked` を用いて、待機中かつ8時間未経過のカードを除外し、今解くべきカード群を返す疎通確認から着手します。
+> **Milestone 1 / Task 1-2:**  
+> **「特訓回答（〇 / ×）による3段階状態遷移を実装する (Update)」**
+> - 未暗記カードの正解で `WAITING` 待機へ移行（8hロック開始）
+> - 待機解除カードの正解で卒業処理（ACTIVE）へ昇格
+> - いずれのカードも不正解（×）で `UNMEMORIZED` へ逆戻り
+> - `src/store/useAppStore.ts` に `answerLectureTrainingCard` を実装します。

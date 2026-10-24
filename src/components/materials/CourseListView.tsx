@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
+import { isWaitingCardLocked } from "../../types/schema";
 import { BookOpenIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface CourseListViewProps {
@@ -8,7 +9,7 @@ interface CourseListViewProps {
 }
 
 export function CourseListView({ onSelectCourse }: CourseListViewProps) {
-  const { courses, lectures, addCourse, deleteCourse, getCourseProgress } = useAppStore();
+  const { courses, lectures, cards, settings, addCourse, deleteCourse } = useAppStore();
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [newCourseName, setNewCourseName] = useState("");
@@ -92,8 +93,30 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {courses.map((course) => {
               const courseLectures = lectures.filter((l) => l.courseId === course.id);
-              const progress = getCourseProgress(course.id);
-              const totalCards = progress.totalCards;
+              const courseCards = cards.filter((c) => c.courseId === course.id);
+              const totalCards = courseCards.length;
+
+              let graduatedCount = 0;
+              let checkAvailableCount = 0;
+              let otherCount = 0;
+
+              const now = new Date();
+              for (const card of courseCards) {
+                if (card.lecturePool.phase === "GRADUATED") {
+                  graduatedCount++;
+                } else if (!card.isSuspended) {
+                  if (
+                    card.lecturePool.consecutiveCorrect >= 1 &&
+                    isWaitingCardLocked(card, settings.waitingDurationHours, now)
+                  ) {
+                    otherCount++;
+                  } else {
+                    checkAvailableCount++;
+                  }
+                } else {
+                  otherCount++;
+                }
+              }
 
               return (
                 <div
@@ -130,40 +153,33 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
                     </button>
                   </div>
 
-                  {/* 4フェーズ進捗バー */}
+                  {/* 3フェーズ進捗バー（卒業済み / 現在チェック可能 / それ以外） */}
                   {totalCards > 0 ? (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between font-mono text-[10px] text-slate-400">
-                        <span className="text-emerald-400">卒業: {progress.graduatedCount}</span>
-                        <span className="text-cyan-400">
-                          推奨: {progress.graduationRecommendedCount}
+                        <span className="text-emerald-400">卒業済み: {graduatedCount}</span>
+                        <span className="text-amber-400">
+                          現在チェック可能: {checkAvailableCount}
                         </span>
-                        <span className="text-amber-400">未卒: {progress.ungraduatedCount}</span>
-                        <span className="text-indigo-400">未実施: {progress.unattemptedCount}</span>
+                        <span className="text-slate-400">それ以外: {otherCount}</span>
                       </div>
                       <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
                         <div
                           className="h-full bg-emerald-500"
                           style={{
-                            width: `${(progress.graduatedCount / totalCards) * 100}%`,
-                          }}
-                        />
-                        <div
-                          className="h-full bg-cyan-400"
-                          style={{
-                            width: `${(progress.graduationRecommendedCount / totalCards) * 100}%`,
+                            width: `${(graduatedCount / totalCards) * 100}%`,
                           }}
                         />
                         <div
                           className="h-full bg-amber-400"
                           style={{
-                            width: `${(progress.ungraduatedCount / totalCards) * 100}%`,
+                            width: `${(checkAvailableCount / totalCards) * 100}%`,
                           }}
                         />
                         <div
-                          className="h-full bg-indigo-500"
+                          className="h-full bg-slate-600"
                           style={{
-                            width: `${(progress.unattemptedCount / totalCards) * 100}%`,
+                            width: `${(otherCount / totalCards) * 100}%`,
                           }}
                         />
                       </div>

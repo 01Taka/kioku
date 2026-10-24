@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import { ArrowLeftIcon, EditIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
@@ -61,15 +61,24 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     lectureIdForGraduation?: string;
   } | null>(null);
 
+  // リアルタイム時間更新用タイマー (30秒ごと)
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 30000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // チェック対象キュー
   const checkTrainingQueue = useMemo(() => {
     if (!selectedCheckLectureId) return null;
     return getLectureTrainingQueue(
       selectedCheckLectureId,
       settings.waitingDurationHours,
-      new Date(),
+      new Date(nowTick),
     );
-  }, [selectedCheckLectureId, getLectureTrainingQueue, settings.waitingDurationHours, cards]);
+  }, [selectedCheckLectureId, getLectureTrainingQueue, settings.waitingDurationHours, nowTick]);
 
   const selectedCheckLecture = courseLectures.find((l) => l.id === selectedCheckLectureId);
 
@@ -272,7 +281,53 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
             ) : (
               courseLectures.map((lecture) => {
                 const isSelected = selectedCheckLectureId === lecture.id;
-                const prog = getLectureProgress(lecture.id);
+                const queue = getLectureTrainingQueue(
+                  lecture.id,
+                  settings.waitingDurationHours,
+                  new Date(nowTick),
+                );
+                const checkCount = queue.cards.length;
+
+                // 残り時間表示ロジック
+                let rightSideContent: React.ReactNode;
+                if (checkCount > 0) {
+                  rightSideContent = (
+                    <span className="font-mono text-xs font-bold text-amber-400">
+                      {checkCount} 枚
+                    </span>
+                  );
+                } else if (queue.earliestUnlockAt) {
+                  const unlockTimeMs = new Date(queue.earliestUnlockAt).getTime();
+                  const diffMs = unlockTimeMs - nowTick;
+                  if (diffMs <= 0) {
+                    rightSideContent = (
+                      <span className="font-mono text-xs font-bold text-emerald-400">
+                        チェック可能
+                      </span>
+                    );
+                  } else {
+                    const totalMinutes = Math.ceil(diffMs / 60000);
+                    if (totalMinutes < 120) {
+                      rightSideContent = (
+                        <span className="font-mono text-xs text-slate-400">
+                          あと {totalMinutes}分
+                        </span>
+                      );
+                    } else {
+                      const hours = Math.ceil(totalMinutes / 60);
+                      rightSideContent = (
+                        <span className="font-mono text-xs text-slate-400">
+                          あと {hours}時間
+                        </span>
+                      );
+                    }
+                  }
+                } else {
+                  rightSideContent = (
+                    <span className="text-xs font-semibold text-emerald-400/90">完了</span>
+                  );
+                }
+
                 return (
                   <div
                     key={lecture.id}
@@ -283,28 +338,8 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                         : "border-slate-800 bg-slate-900/80 hover:border-slate-700"
                     }`}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold text-white">{lecture.name}</span>
-                        {isSelected && (
-                          <span className="py-0.2 rounded-full border border-amber-500/40 bg-amber-500/20 px-2 text-[10px] font-semibold text-amber-300">
-                            選択中
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 font-mono text-[10px] text-slate-400">
-                        <span className="text-cyan-400">
-                          推奨: {prog.graduationRecommendedCount}
-                        </span>
-                        <span className="text-amber-400">未卒: {prog.ungraduatedCount}</span>
-                        <span className="text-indigo-400">未実施: {prog.unattemptedCount}</span>
-                        <span className="text-emerald-400">卒業: {prog.graduatedCount}</span>
-                      </div>
-                    </div>
-
-                    <span className="font-mono text-xs font-semibold text-slate-400">
-                      計 {prog.totalCards} 枚
-                    </span>
+                    <span className="text-xs font-bold text-white">{lecture.name}</span>
+                    <div className="flex-shrink-0">{rightSideContent}</div>
                   </div>
                 );
               })

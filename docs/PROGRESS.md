@@ -74,21 +74,21 @@
 ### Milestone 2: 共通プール（長期ステージ / FSRS）コア選定エンジンの構築
 > **目的:** 卒業済みカード（ACTIVE）から、カテゴリー優先度や日付変更線（午前4:00）に則った出題キューを生成する。
 
-- [ ] **Task 2-1: 午前04:00境界日時の判定と日次セッションストレージ管理 (Read/Update)**
+- [x] **Task 2-1: 午前04:00境界日時の判定と日次セッションストレージ管理 (Read/Update)**
   - `getCutoffTime(now)` / `getNextCutoffTime(now)` を用いた当日・翌日の日付キー判定
   - 午前04:00を跨いだ際の `todayMistakeCardIds` の自動リセット機構
   - 成果物: `src/utils/dateUtils.ts`, `src/store/useAppStore.ts`
-- [ ] **Task 2-2: 当日回答済みカードの絶対除外フィルタの実装 (Read)**
+- [x] **Task 2-2: 当日回答済みカードの絶対除外フィルタの実装 (Read)**
   - `lastReviewedAt >= 当日04:00:00` のカードを当日の共通プールから完全除外（本日卒業カードや回答済みカードの同日重複出題を100%防止）
   - 成果物: `src/utils/queueBuilder.ts`
-- [ ] **Task 2-3: 3色カラーコーディング（リベンジ / 期日 / 先取り）判定エンジンの実装 (Read)**
+- [x] **Task 2-3: 3色カラーコーディング（リベンジ / 期日 / 先取り）判定エンジンの実装 (Read)**
   - 評価順序の厳格適用:
     1. `isOrange === true` ➔ 🔁 オレンジ（リベンジ枠・最優先）
     2. `due < 当日04:00:00` ➔ 🎯 グリーン（期限切れ通常）
     3. `当日04:00:00 <= due < 翌日04:00:00` ➔ 🎯 グリーン（当日分）
     4. `due >= 翌日04:00:00` ➔ ⚡ パープル（先取り枠）
   - 成果物: `src/utils/queueBuilder.ts`
-- [ ] **Task 2-4: カテゴリー優先度（強制出題 / 優先 / 通常）と階層継承の合流ロジック (Read)**
+- [x] **Task 2-4: カテゴリー優先度（強制出題 / 優先 / 通常）と階層継承の合流ロジック (Read)**
   - 子（講義回）の上書き優先度 ＞ 親（科目）の優先度
   - キュー合流順序:
     1. 「強制出題（FORCE）」全講義の当日未学習カード（due無視・シャッフル）
@@ -102,7 +102,7 @@
 ### Milestone 3: 共通プール（FSRS長期ステージ）学習セッション画面の実装
 > **目的:** 10問単位のマイクロセッション、FSRS計算実行、ブレイク画面を構築する。
 
-- [ ] **Task 3-1: ts-fsrs パラメータの設定と 2ボタン（Again / Good）更新ロジック (Update)**
+- [x] **Task 3-1: ts-fsrs パラメータの設定と 2ボタン（Again / Good）更新ロジック (Update)**
   - `request_retention: 0.82`, `enable_short_term: false`（ステップ空配列）の設定
   - `Rating.Again`（不正解） / `Rating.Good`（正解）のみでの FSRS 計算・パラメータ更新
   - 回答後の `lastReviewedAt = now` 更新
@@ -122,7 +122,7 @@
 ### Milestone 4: 誤答（Again）処理 & 「今日間違えた問題」画面の実装
 > **目的:** セッション内ループを廃止し、ミスしたカードの翌日最優先リベンジと手動降格ハブを構築する。
 
-- [ ] **Task 4-1: 誤答時のオレンジフラグ付与 & 連続ミス回数カウント (Update)**
+- [x] **Task 4-1: 誤答時のオレンジフラグ付与 & 連続ミス回数カウント (Update)**
   - Again 選択時: 即座に次の問題へ（セッション内再出題なし）、`isOrange = true`, `consecutiveFailCount += 1`, `todayMistakeCardIds` に追加
   - 次回以降 Good 選択時: `isOrange = false`, `consecutiveFailCount = 0` にリセット
   - 成果物: `src/store/useAppStore.ts`
@@ -132,7 +132,7 @@
   - 「連続ミス回数バッジ」（⚠️ 2連続ミス / 🔥 3連続ミス）
   - 連続2回以上（`consecutiveFailCount >= 2`）のカードに初期チェックを付与
   - 成果物: `src/components/session/TodayMistakesView.tsx`
-- [ ] **Task 4-3: 「選択したカードを講義プールに戻す」一括降格アクションの実装 (Update)**
+- [x] **Task 4-3: 「選択したカードを講義プールに戻す」一括降格アクションの実装 (Update)**
   - チェックしたカードを所属講義の専用プール（`phase = UNMEMORIZED`）へ一括降格
   - 過去の FSRS パラメータを完全リセット（新規カード化）
   - 成果物: `src/store/useAppStore.ts` (`batchDemoteToLecturePool`)
@@ -142,11 +142,11 @@
 ### Milestone 5: リカバリー室（想起確率 $R < 0.35$ 救済トリアージ）の実装
 > **目的:** 復習が溜まりすぎた場合の日常復習阻害を防ぐ隔離所と救済アクションを構築する。
 
-- [ ] **Task 5-1: 想起確率 $R < 0.35$ 瀕死カードの自動トリアージ & 隔離除外 (Read)**
+- [x] **Task 5-1: 想起確率 $R < 0.35$ 瀕死カードの自動トリアージ & 隔離除外 (Read)**
   - FSRS の計算式から現在日時における想起確率 $R$ を算出
   - $R < 0.35$ のカードを日々の共通プール出題から自動除外
   - 【例外規定】当該講義が「強制出題（FORCE）」に設定されている期間中は隔離をバイパスして出題
-  - 成果物: `src/utils/recoveryUtils.ts`, `src/utils/queueBuilder.ts`
+  - 成果物: `src/services/fsrsService.ts`, `src/utils/queueBuilder.ts`
 - [ ] **Task 5-2: リカバリー室専用画面の作成 (Read/UI)**
   - 隔離されたカードを所属情報（`科目名 > 講義回名`）とともに一覧表示
   - 現在の推定想起確率（$R$ 値）の表示

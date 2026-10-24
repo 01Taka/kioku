@@ -11,12 +11,16 @@ import type {
   FlashcardContent,
   LectureTrainingQueueResult,
   AppSettings,
+  SessionStorageState,
+  ActiveRating,
+  AppBackupData,
 } from "../types/schema";
 import {
   createNewCard,
   demoteCardToLecturePool,
   getSuspensionStatus,
   isWaitingCardLocked,
+  importBackupData,
   SYSTEM_CONSTANTS,
 } from "../types/schema";
 import {
@@ -25,6 +29,16 @@ import {
   applyLectureTrainingAnswer,
   type LectureTrainingTransitionResult,
 } from "../utils/trainingQueue";
+import {
+  getActiveDateKey,
+  getNextCutoffTime,
+  isReviewedToday,
+} from "../utils/dateUtils";
+import {
+  buildCommonPoolQueue,
+  type CommonPoolQueueBuildResult,
+} from "../utils/queueBuilder";
+import { reviewCommonPoolCard } from "../services/fsrsService";
 
 export function getBatchSignature(contents: FlashcardContent[]): string {
   return contents
@@ -48,19 +62,27 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   waitingDurationHours: SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
 };
 
+export const createDefaultSessionState = (now: Date = new Date()): SessionStorageState => ({
+  retryCardIds: [],
+  todayMistakeCardIds: [],
+  lastActiveDateKey: getActiveDateKey(now),
+});
+
 interface AppState {
   courses: Course[];
   lectures: Lecture[];
   cards: Card[];
   settings: AppSettings;
+  sessionState: SessionStorageState;
 
   selectedCourseId: string | null;
   selectedLectureId: string | null;
 
   lastImportBatch: LastImportBatchInfo | null;
 
-  // Settings actions
+  // Settings & Daily Cutoff actions
   updateSettings: (updates: Partial<AppSettings>) => void;
+  syncDailyCutoff: (now?: Date) => void;
 
   // Course actions
   addCourse: (name: string, priorityMode?: PriorityMode) => Course;
@@ -99,6 +121,31 @@ interface AppState {
     result: "correct" | "incorrect",
     now?: Date,
   ) => LectureTrainingTransitionResult | null;
+
+  // Common Pool & Recovery Room actions
+  getCommonPoolQueue: (
+    now?: Date,
+    batchSize?: number,
+  ) => CommonPoolQueueBuildResult;
+  answerCommonPoolCard: (
+    cardId: string,
+    rating: ActiveRating,
+    now?: Date,
+  ) => void;
+  batchDemoteToLecturePool: (cardIds: string[]) => number;
+  answerRecoveryTestCard: (
+    cardId: string,
+    rating: ActiveRating,
+    now?: Date,
+  ) => "RECOVERED" | "DEMOTED" | null;
+
+  // Backup Export & Import actions
+  exportBackupData: () => AppBackupData;
+  importBackupJson: (backup: AppBackupData) => {
+    addedCourses: number;
+    addedLectures: number;
+    addedCards: number;
+  };
 
   // Batch / Bundle actions
   addCardsBatch: (
@@ -141,6 +188,7 @@ export const useAppStore = create<AppState>()(
       lectures: [],
       cards: [],
       settings: DEFAULT_APP_SETTINGS,
+      sessionState: createDefaultSessionState(),
       selectedCourseId: null,
       selectedLectureId: null,
       lastImportBatch: null,
@@ -152,6 +200,20 @@ export const useAppStore = create<AppState>()(
             ...updates,
           },
         }));
+      },
+
+      syncDailyCutoff: (now = new Date()) => {
+        const currentKey = getActiveDateKey(now, get().settings.dayCutoffHour);
+        const prevKey = get().sessionState.lastActiveDateKey;
+        if (currentKey !== prevKey) {
+          set((state) => ({
+            sessionState: {
+              ...state.sessionState,
+              todayMistakeCardIds: [],
+              lastActiveDateKey: currentKey,
+            },
+          }));
+        }
       },
 
       addCourse: (name, priorityMode = "NORMAL") => {
@@ -369,6 +431,19 @@ export const useAppStore = create<AppState>()(
 
         set((state) => ({
           cards: state.cards.map((c) => (c.id === id ? updatedCard : c)),
+          sessionState:
+            phase !== "ACTIVE"
+              ? {
+                  ...state.sessionState,
+                  retryCardIds: state.sessionState.retryCardIds.filter(
+                    (cid) => cid !== id,
+                  ),
+                  todayMistakeCardIds:
+                    state.sessionState.todayMistakeCardIds.filter(
+                      (cid) => cid !== id,
+                    ),
+                }
+              : state.sessionState,
         }));
       },
 
@@ -403,6 +478,202 @@ export const useAppStore = create<AppState>()(
         }));
 
         return transitionResult;
+      },
+
+      getCommonPoolQueue: (now = new Date(), batchSize) => {
+        const state = get();
+        const activeKey = getActiveDateKey(now, state.settings.dayCutoffHour);
+        const effectiveRetryIds = state.sessionState.retryCardIds;
+
+        // もし日付が切り替わっていれば非同期に syncDailyCutoff も反映させる
+        if (state.sessionState.lastActiveDateKey !== activeKey) {
+          set((prev) => ({
+            sessionState: {
+              ...prev.sessionState,
+              todayMistakeCardIds: [],
+              lastActiveDateKey: activeKey,
+            },
+          }));
+        }
+
+        return buildCommonPoolQueue({
+          cards: state.cards,
+          courses: state.courses,
+          lectures: state.lectures,
+          retryCardIds: effectiveRetryIds,
+          settings: state.settings,
+          now,
+          batchSize,
+        });
+      },
+
+      answerCommonPoolCard: (cardId, rating, now = new Date()) => {
+        const state = get();
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card || !card.commonPool) return;
+
+        const { requestRetention, dayCutoffHour } = state.settings;
+        const activeKey = getActiveDateKey(now, dayCutoffHour);
+        const nowIso = now.toISOString();
+
+        const { fsrsCard: updatedFsrs } = reviewCommonPoolCard(
+          card.commonPool.fsrs,
+          rating,
+          now,
+          requestRetention,
+          dayCutoffHour,
+        );
+
+        const nextConsecutiveFailCount =
+          rating === "AGAIN" ? card.commonPool.consecutiveFailCount + 1 : 0;
+
+        const updatedCard: Card = {
+          ...card,
+          commonPool: {
+            fsrs: updatedFsrs,
+            lastReviewedAt: nowIso,
+            consecutiveFailCount: nextConsecutiveFailCount,
+          },
+          updatedAt: nowIso,
+        };
+
+        set((prev) => {
+          const baseTodayMistakes =
+            prev.sessionState.lastActiveDateKey === activeKey
+              ? prev.sessionState.todayMistakeCardIds
+              : [];
+
+          const nextRetryCardIds =
+            rating === "AGAIN"
+              ? Array.from(new Set([...prev.sessionState.retryCardIds, cardId]))
+              : prev.sessionState.retryCardIds.filter((id) => id !== cardId);
+
+          const nextTodayMistakeCardIds =
+            rating === "AGAIN"
+              ? Array.from(new Set([...baseTodayMistakes, cardId]))
+              : baseTodayMistakes;
+
+          return {
+            cards: prev.cards.map((c) => (c.id === cardId ? updatedCard : c)),
+            sessionState: {
+              retryCardIds: nextRetryCardIds,
+              todayMistakeCardIds: nextTodayMistakeCardIds,
+              lastActiveDateKey: activeKey,
+            },
+          };
+        });
+      },
+
+      batchDemoteToLecturePool: (cardIds) => {
+        if (cardIds.length === 0) return 0;
+        const targetSet = new Set(cardIds);
+        let demotedCount = 0;
+
+        set((state) => {
+          const nextCards = state.cards.map((card) => {
+            if (!targetSet.has(card.id)) return card;
+            demotedCount++;
+            return demoteCardToLecturePool(card);
+          });
+
+          return {
+            cards: nextCards,
+            sessionState: {
+              ...state.sessionState,
+              retryCardIds: state.sessionState.retryCardIds.filter(
+                (id) => !targetSet.has(id),
+              ),
+              todayMistakeCardIds:
+                state.sessionState.todayMistakeCardIds.filter(
+                  (id) => !targetSet.has(id),
+                ),
+            },
+          };
+        });
+
+        return demotedCount;
+      },
+
+      answerRecoveryTestCard: (cardId, rating, now = new Date()) => {
+        const state = get();
+        const card = state.cards.find((c) => c.id === cardId);
+        if (!card || !card.commonPool) return null;
+
+        if (rating === "GOOD") {
+          // 正解なら共通プールへ復帰（Rating.GoodでFSRS更新）
+          get().answerCommonPoolCard(cardId, "GOOD", now);
+          return "RECOVERED";
+        } else {
+          // 不正解なら即座に所属講義の専用プール（未暗記）へ降格
+          get().batchDemoteToLecturePool([cardId]);
+          return "DEMOTED";
+        }
+      },
+
+      exportBackupData: () => {
+        const state = get();
+        const courseMap = new Map(state.courses.map((c) => [c.id, c]));
+        const lectureMap = new Map(state.lectures.map((l) => [l.id, l]));
+
+        return {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          settings: state.settings,
+          cards: state.cards.map((card) => {
+            const course = courseMap.get(card.courseId);
+            const lecture = lectureMap.get(card.lectureId);
+            return {
+              courseId: card.courseId,
+              courseName: course?.name ?? "未分類科目",
+              coursePriorityMode: course?.priorityMode ?? "NORMAL",
+              lectureId: card.lectureId,
+              lectureName: lecture?.name ?? "未分類講義",
+              lectureOrder: lecture?.order ?? 0,
+              id: card.id,
+              front: card.front,
+              back: card.back,
+              isSuspended: card.isSuspended,
+              bundleId: card.bundleId,
+              lecturePool: card.lecturePool,
+              commonPool: card.commonPool,
+              createdAt: card.createdAt,
+              updatedAt: card.updatedAt,
+            };
+          }),
+        };
+      },
+
+      importBackupJson: (backup) => {
+        const state = get();
+        const prevCourseCount = state.courses.length;
+        const prevLectureCount = state.lectures.length;
+        const prevCardCount = state.cards.length;
+
+        const merged = importBackupData(
+          backup.cards ?? [],
+          state.courses,
+          state.lectures,
+          state.cards,
+        );
+
+        set({
+          courses: merged.courses,
+          lectures: merged.lectures,
+          cards: merged.cards,
+          settings: backup.settings
+            ? { ...state.settings, ...backup.settings }
+            : state.settings,
+          selectedCourseId:
+            state.selectedCourseId ?? merged.courses[0]?.id ?? null,
+          selectedLectureId:
+            state.selectedLectureId ?? merged.lectures[0]?.id ?? null,
+        });
+
+        return {
+          addedCourses: merged.courses.length - prevCourseCount,
+          addedLectures: merged.lectures.length - prevLectureCount,
+          addedCards: merged.cards.length - prevCardCount,
+        };
       },
 
       addCardsBatch: (courseId, lectureId, contents, customBundleId) => {
@@ -494,15 +765,21 @@ export const useAppStore = create<AppState>()(
       },
 
       getLectureProgress: (lectureId) => {
-        const cards = get().cards.filter((c) => c.lectureId === lectureId);
+        const state = get();
+        const cards = state.cards.filter((c) => c.lectureId === lectureId);
         let unmemorizedCount = 0;
         let waitingCount = 0;
         let activeCount = 0;
+        let retryCount = 0;
+        let dueCount = 0;
         let earliestUnlockAt: string | null = null;
         let isWaitingLocked = false;
 
         const now = new Date();
-        const waitingHours = get().settings.waitingDurationHours;
+        const waitingHours = state.settings.waitingDurationHours;
+        const cutoffHour = state.settings.dayCutoffHour;
+        const nextCutoff = getNextCutoffTime(now, cutoffHour);
+        const retrySet = new Set(state.sessionState.retryCardIds);
 
         for (const card of cards) {
           if (card.lecturePool.phase === "UNMEMORIZED") {
@@ -522,6 +799,17 @@ export const useAppStore = create<AppState>()(
             }
           } else if (card.lecturePool.phase === "ACTIVE") {
             activeCount++;
+            if (
+              !card.isSuspended &&
+              card.commonPool &&
+              !isReviewedToday(card.commonPool.lastReviewedAt, now, cutoffHour)
+            ) {
+              if (retrySet.has(card.id)) {
+                retryCount++;
+              } else if (new Date(card.commonPool.fsrs.due) < nextCutoff) {
+                dueCount++;
+              }
+            }
           }
         }
 
@@ -530,19 +818,43 @@ export const useAppStore = create<AppState>()(
           unmemorizedCount,
           waitingCount,
           activeCount,
-          retryCount: 0,
-          dueCount: 0,
+          retryCount,
+          dueCount,
           isWaitingLocked,
           earliestUnlockAt,
         };
       },
 
       getCourseProgress: (courseId) => {
-        const cards = get().cards.filter((c) => c.courseId === courseId);
+        const state = get();
+        const cards = state.cards.filter((c) => c.courseId === courseId);
         const totalCards = cards.length;
-        const activeCount = cards.filter(
-          (c) => c.lecturePool.phase === "ACTIVE",
-        ).length;
+        let activeCount = 0;
+        let retryCount = 0;
+        let dueCount = 0;
+
+        const now = new Date();
+        const cutoffHour = state.settings.dayCutoffHour;
+        const nextCutoff = getNextCutoffTime(now, cutoffHour);
+        const retrySet = new Set(state.sessionState.retryCardIds);
+
+        for (const card of cards) {
+          if (card.lecturePool.phase === "ACTIVE") {
+            activeCount++;
+            if (
+              !card.isSuspended &&
+              card.commonPool &&
+              !isReviewedToday(card.commonPool.lastReviewedAt, now, cutoffHour)
+            ) {
+              if (retrySet.has(card.id)) {
+                retryCount++;
+              } else if (new Date(card.commonPool.fsrs.due) < nextCutoff) {
+                dueCount++;
+              }
+            }
+          }
+        }
+
         const graduatedPercentage =
           totalCards === 0 ? 0 : Math.round((activeCount / totalCards) * 100);
 
@@ -551,8 +863,8 @@ export const useAppStore = create<AppState>()(
           totalCards,
           activeCount,
           graduatedPercentage,
-          retryCount: 0,
-          dueCount: 0,
+          retryCount,
+          dueCount,
         };
       },
 
@@ -675,6 +987,7 @@ export const useAppStore = create<AppState>()(
         lectures: state.lectures,
         cards: state.cards,
         settings: state.settings,
+        sessionState: state.sessionState,
         selectedCourseId: state.selectedCourseId,
         selectedLectureId: state.selectedLectureId,
       }),

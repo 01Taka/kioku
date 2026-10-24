@@ -347,9 +347,9 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
               type="button"
               onClick={handleStartCheck}
               disabled={!checkTrainingQueue || checkTrainingQueue.items.length === 0}
-              className="flex cursor-pointer items-center space-x-2 rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/30 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-amber-600/30 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
-              <PlayIcon size={14} />
+              <PlayIcon size={16} />
               <span>チェックをはじめる ({checkTrainingQueue?.items.length ?? 0}枚)</span>
             </button>
           </div>
@@ -434,33 +434,35 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
       {activeTab === "REVIEW" && (
         <div className="flex flex-1 flex-col space-y-3 overflow-hidden">
           {/* リストの上 タブの下にはじめるボタンを配置 */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={handleStartReview}
               disabled={selectedReviewLectureIds.size === 0}
-              className="flex cursor-pointer items-center space-x-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
             >
-              <PlayIcon size={14} />
+              <PlayIcon size={16} />
               <span>全問復習をはじめる ({selectedReviewLectureIds.size}講義)</span>
             </button>
 
             {/* その下にすべて選択 / すべて選択解除 第二ボタンを配置 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedReviewLectureIds.size === courseLectures.length) {
-                  setSelectedReviewLectureIds(new Set());
-                } else {
-                  setSelectedReviewLectureIds(new Set(courseLectures.map((l) => l.id)));
-                }
-              }}
-              className="cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700"
-            >
-              {selectedReviewLectureIds.size === courseLectures.length
-                ? "すべて選択解除"
-                : "すべて選択"}
-            </button>
+            <div className="flex w-full justify-end sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedReviewLectureIds.size === courseLectures.length) {
+                    setSelectedReviewLectureIds(new Set());
+                  } else {
+                    setSelectedReviewLectureIds(new Set(courseLectures.map((l) => l.id)));
+                  }
+                }}
+                className="cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700"
+              >
+                {selectedReviewLectureIds.size === courseLectures.length
+                  ? "すべて選択解除"
+                  : "すべて選択"}
+              </button>
+            </div>
           </div>
 
           {/* 講義リストをクリックしてマルチセレクト */}

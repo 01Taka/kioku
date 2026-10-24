@@ -200,7 +200,7 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
               <button
                 type="button"
                 onClick={() => setIsMainStartModalOpen(true)}
-                className="flex cursor-pointer items-center space-x-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500"
+                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 sm:w-auto"
               >
                 <PlayIcon size={16} />
                 <span>はじめる</span>
@@ -215,14 +215,14 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
         {activeSubTab === "MISTAKES" && (
           <div className="space-y-4">
             {/* 画面上部: 「はじめる」ボタン */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setIsMistakesStartModalOpen(true)}
                 disabled={mistakeCards.length === 0}
-                className="flex cursor-pointer items-center space-x-1.5 rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/30 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-amber-600/30 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-                <PlayIcon size={14} />
+                <PlayIcon size={16} />
                 <span>はじめる ({mistakeCards.length}問)</span>
               </button>
 
@@ -272,14 +272,14 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
         {activeSubTab === "FORGOTTEN" && (
           <div className="space-y-4">
             {/* 画面上部: アクションボタン */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               {selectedForgottenIds.size > 0 ? (
                 <button
                   type="button"
                   onClick={() => handleDemoteForgotten(false)}
-                  className="flex cursor-pointer items-center space-x-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 transition hover:bg-rose-500"
+                  className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-rose-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-rose-600/30 transition hover:bg-rose-500 sm:w-auto"
                 >
-                  <UndoIcon size={13} />
+                  <UndoIcon size={16} />
                   <span>選択した問題を除外 ({selectedForgottenIds.size}件)</span>
                 </button>
               ) : (
@@ -287,27 +287,29 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
                   type="button"
                   onClick={() => handleDemoteForgotten(true)}
                   disabled={recoveryItems.length === 0}
-                  className="flex cursor-pointer items-center space-x-1.5 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-rose-950 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl border border-slate-700 bg-slate-800 px-6 py-3 text-sm font-semibold text-slate-300 transition hover:bg-rose-950 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
                 >
-                  <UndoIcon size={13} />
+                  <UndoIcon size={16} />
                   <span>すべて除外 ({recoveryItems.length}件)</span>
                 </button>
               )}
 
               {recoveryItems.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedForgottenIds.size === recoveryItems.length) {
-                      setSelectedForgottenIds(new Set());
-                    } else {
-                      setSelectedForgottenIds(new Set(recoveryItems.map((r) => r.card.id)));
-                    }
-                  }}
-                  className="cursor-pointer text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  {selectedForgottenIds.size === recoveryItems.length ? "選択解除" : "全選択"}
-                </button>
+                <div className="flex w-full justify-end sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedForgottenIds.size === recoveryItems.length) {
+                        setSelectedForgottenIds(new Set());
+                      } else {
+                        setSelectedForgottenIds(new Set(recoveryItems.map((r) => r.card.id)));
+                      }
+                    }}
+                    className="cursor-pointer text-xs text-indigo-400 hover:text-indigo-300"
+                  >
+                    {selectedForgottenIds.size === recoveryItems.length ? "選択解除" : "全選択"}
+                  </button>
+                </div>
               )}
             </div>
 

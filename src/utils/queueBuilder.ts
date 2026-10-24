@@ -166,8 +166,8 @@ export function buildCommonPoolQueue(params: {
   const recoveryCards: RecoveryCardItem[] = [];
 
   for (const card of cards) {
-    // 1. 共通プール（ACTIVE）でないカード・休止中カードは除外
-    if (card.lecturePool.phase !== "ACTIVE" || !card.commonPool || card.isSuspended) {
+    // 1. 共通プール（GRADUATED: 卒業済）でないカード・休止中カードは除外
+    if (card.lecturePool.phase !== "GRADUATED" || !card.commonPool || card.isSuspended) {
       continue;
     }
 

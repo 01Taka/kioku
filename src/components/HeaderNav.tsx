@@ -31,7 +31,7 @@ export function HeaderNav({
   const mistakeCount = useMemo(() => {
     const mistakeSet = new Set(sessionState.todayMistakeCardIds);
     return cards.filter(
-      (c) => mistakeSet.has(c.id) && c.lecturePool.phase === "ACTIVE",
+      (c) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED",
     ).length;
   }, [cards, sessionState.todayMistakeCardIds]);
 

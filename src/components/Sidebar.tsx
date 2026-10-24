@@ -207,21 +207,24 @@ export function Sidebar() {
 
         {/* ステータスカラーの静かな凡例 */}
         <div className="flex items-center justify-between text-[10px] text-slate-400 px-0.5">
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2">
             <span className="flex items-center space-x-1">
-              <span className="w-2 h-2 rounded-full bg-slate-400" />
-              <span>未暗記</span>
+              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+              <span>未実施</span>
             </span>
             <span className="flex items-center space-x-1">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span>待機(8h)</span>
+              <span>未卒業</span>
+            </span>
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+              <span>卒業推奨</span>
             </span>
             <span className="flex items-center space-x-1">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>卒業</span>
+              <span>卒業済</span>
             </span>
           </div>
-          <span className="text-[10px] text-slate-500">🔁/🎯=本日復習</span>
         </div>
       </div>
 
@@ -515,11 +518,15 @@ export function Sidebar() {
                               className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                                 isLectureSelected
                                   ? "bg-white"
-                                  : lecProgress.unmemorizedCount > 0
-                                    ? "bg-amber-400"
-                                    : lecProgress.activeCount > 0
-                                      ? "bg-emerald-400"
-                                      : "bg-slate-600"
+                                  : lecProgress.graduationRecommendedCount > 0
+                                    ? "bg-cyan-400"
+                                    : lecProgress.ungraduatedCount > 0
+                                      ? "bg-amber-400"
+                                      : lecProgress.unattemptedCount > 0
+                                        ? "bg-indigo-400"
+                                        : lecProgress.graduatedCount > 0
+                                          ? "bg-emerald-400"
+                                          : "bg-slate-600"
                               }`}
                             />
                             <span className="truncate">{lecture.name}</span>
@@ -544,43 +551,53 @@ export function Sidebar() {
                               </span>
                             )}
 
-                            {/* 未暗記 / 待機中 / 卒業 の色分けピル */}
+                            {/* 未実施 / 未卒業 / 卒業推奨 / 卒業済 の色分けピル */}
                             <div
                               className={`flex items-center space-x-1 px-1.5 py-0.5 rounded text-[10px] font-mono ${
                                 isLectureSelected
                                   ? "bg-indigo-950/60"
                                   : "bg-slate-900/90 border border-slate-800"
                               }`}
-                              title={`未暗記: ${lecProgress.unmemorizedCount}枚 / 待機中(8h): ${lecProgress.waitingCount}枚 / 卒業済: ${lecProgress.activeCount}枚`}
+                              title={`未実施: ${lecProgress.unattemptedCount}枚 / 未卒業: ${lecProgress.ungraduatedCount}枚 / 卒業推奨: ${lecProgress.graduationRecommendedCount}枚 / 卒業済: ${lecProgress.graduatedCount}枚`}
                             >
                               <span
                                 className={
-                                  lecProgress.unmemorizedCount > 0
-                                    ? "text-slate-200 font-bold"
+                                  lecProgress.unattemptedCount > 0
+                                    ? "text-indigo-300 font-bold"
                                     : "text-slate-500"
                                 }
                               >
-                                {lecProgress.unmemorizedCount}
+                                {lecProgress.unattemptedCount}
                               </span>
                               <span className="text-slate-600">·</span>
                               <span
                                 className={
-                                  lecProgress.waitingCount > 0
+                                  lecProgress.ungraduatedCount > 0
                                     ? "text-amber-300 font-bold"
                                     : "text-slate-500"
                                 }
                               >
-                                {lecProgress.waitingCount}
+                                {lecProgress.ungraduatedCount}
                               </span>
                               <span className="text-slate-600">·</span>
                               <span
                                 className={
-                                  lecProgress.activeCount > 0
+                                  lecProgress.graduationRecommendedCount > 0
+                                    ? "text-cyan-300 font-bold"
+                                    : "text-slate-500"
+                                }
+                              >
+                                {lecProgress.graduationRecommendedCount}
+                              </span>
+                              <span className="text-slate-600">·</span>
+                              <span
+                                className={
+                                  lecProgress.graduatedCount > 0
                                     ? "text-emerald-300 font-bold"
                                     : "text-slate-500"
                                 }
                               >
-                                {lecProgress.activeCount}
+                                {lecProgress.graduatedCount}
                               </span>
                             </div>
 

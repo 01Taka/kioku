@@ -14,9 +14,21 @@ export const SYSTEM_CONSTANTS = {
 
 /** 講義専用プール（個別プール）内でのカードステータス */
 export type LectureCardPhase =
-  | "UNMEMORIZED" // 未暗記（講義特訓の出題対象）
-  | "WAITING" // 待機中（ロック中）
-  | "ACTIVE"; // 卒業済（共通プール稼働中、講義ビューでも卒業表示）
+  | "UNATTEMPTED" // 未実施: 過去に一回も取り組んでいない
+  | "UNGRADUATED" // 未卒業: 取り組んだことがあるがまだ卒業していない
+  | "GRADUATION_RECOMMENDED" // 卒業推奨: 現在2回以上連続で正解している
+  | "GRADUATED"; // 卒業済: 共通プールに移動済み
+
+/**
+ * 講義「チェック」モードにおける3つの出題区分（優先度: 3 > 2 > 1）
+ * 3: 連続1回以上正解かつ未暗記（未卒業/卒業推奨）かつ前回の取り組みから規定時間（デフォルト8時間）経過
+ * 2: 未実施（過去に一回も取り組んでいない）
+ * 1: 連続正解0の未暗記（未卒業）
+ */
+export type LectureCheckCategory =
+  | "PRIORITY_3_COOLDOWN_CLEARED"
+  | "PRIORITY_2_UNATTEMPTED"
+  | "PRIORITY_1_ZERO_STREAK";
 
 /** カテゴリー優先度モード（3段階 & 階層継承） */
 export type PriorityMode =
@@ -80,9 +92,9 @@ export interface Lecture {
  * 講義ビューのカード一覧やプログレスバー表示に直接使用される
  */
 export interface CardLecturePoolState {
-  phase: LectureCardPhase; // 'UNMEMORIZED' | 'WAITING' | 'ACTIVE'
-  consecutiveCorrect: number; // 連続正解数（0 または 1）
-  lastCorrectAt: string | null; // 1回目正解日時（WAITING ロックの起点 / ISO 8601）
+  phase: LectureCardPhase;
+  consecutiveCorrect: number; // 連続正解数（0, 1, 2...）
+  lastAttemptAt: string | null; // 最後に取り組んだ日時（ISO 8601）
 }
 
 /**
@@ -215,25 +227,33 @@ export interface AppBackupData {
 /** 講義回ごとの状況 */
 export interface LectureProgress {
   lectureId: string;
-  unmemorizedCount: number; // 未暗記
-  waitingCount: number; // 待機中（ロック中）
-  activeCount: number; // 卒業済み（共通プール）
+  unattemptedCount: number; // 未実施（過去に一回も取り組んでいない）
+  ungraduatedCount: number; // 未卒業（取り組んだことがあるがまだ卒業していない）
+  graduationRecommendedCount: number; // 卒業推奨（現在2回以上連続で正解している）
+  graduatedCount: number; // 卒業済（共通プールに移動済み）
 
   // 本日の対象件数（静かに一覧で確認できる用）
   retryCount: number; // 🔁 リベンジ枠件数
   dueCount: number; // 🎯 期日到来枠件数
 
-  isWaitingLocked: boolean; // 待機中カードが存在するか
+  isWaitingLocked: boolean; // 規定時間待機中（ロック中）カードが存在するか
   earliestUnlockAt: string | null; // 最短のロック解除予定日時（ISO 8601）
 }
 
-/** 講義特訓モードの出題対象キュー結果 */
+export interface LectureCheckQueueItem {
+  card: Card;
+  checkCategory: LectureCheckCategory;
+}
+
+/** 講義「チェック」モードの出題対象キュー結果 */
 export interface LectureTrainingQueueResult {
   lectureId: string;
-  cards: Card[]; // 出題対象カード一覧
-  unmemorizedCount: number; // 出題対象中の未暗記枚数
-  unlockedWaitingCount: number; // 出題対象中の待機解除枚数
-  lockedWaitingCount: number; // ロック中で出題できない待機枚数
+  cards: Card[]; // 出題対象カード一覧（優先度 3 > 2 > 1 順）
+  items: LectureCheckQueueItem[]; // 出題区分付きアイテム一覧（優先度 3 > 2 > 1 順）
+  priority3Count: number; // 区分3: 連続1回以上正解＆8h経過の枚数
+  priority2Count: number; // 区分2: 未実施の枚数
+  priority1Count: number; // 区分1: 連続正解0の未暗記の枚数
+  lockedWaitingCount: number; // 連続1回以上正解だが8h未満でロック中の枚数
   earliestUnlockAt: string | null; // 最短のロック解除予定日時（ISO 8601）
 }
 
@@ -337,17 +357,21 @@ export function determineReviewCategory(
 }
 
 /**
- * 待機中（WAITING）カードのロック判定
+ * 連続1回以上正解している未卒業（または卒業推奨）カードの規定時間（8h）ロック判定
  */
 export function isWaitingCardLocked(
   card: Card,
   waitingHours: number = SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
   now: Date = new Date(),
 ): boolean {
-  if (card.lecturePool.phase !== "WAITING" || !card.lecturePool.lastCorrectAt) {
+  const { phase, consecutiveCorrect, lastAttemptAt } = card.lecturePool;
+  if (phase === "GRADUATED" || phase === "UNATTEMPTED") {
     return false;
   }
-  const unlockTime = new Date(card.lecturePool.lastCorrectAt);
+  if (consecutiveCorrect < 1 || !lastAttemptAt) {
+    return false;
+  }
+  const unlockTime = new Date(lastAttemptAt);
   unlockTime.setHours(unlockTime.getHours() + waitingHours);
   return now < unlockTime;
 }
@@ -384,9 +408,9 @@ export function createNewCard(params: {
     ...params,
     isSuspended: false,
     lecturePool: {
-      phase: "UNMEMORIZED",
+      phase: "UNATTEMPTED",
       consecutiveCorrect: 0,
-      lastCorrectAt: null,
+      lastAttemptAt: null,
     },
     commonPool: null, // 初期状態は共通プールなし
     createdAt: now,
@@ -394,7 +418,7 @@ export function createNewCard(params: {
   };
 }
 
-/** 講義プール卒業（2回連続正解 ➔ 共通プール昇格） */
+/** 講義プール卒業（共通プール昇格） */
 export function graduateCardToCommonPool(
   card: Card,
   initialFsrsCard: FSRSCard,
@@ -404,7 +428,8 @@ export function graduateCardToCommonPool(
     ...card,
     lecturePool: {
       ...card.lecturePool,
-      phase: "ACTIVE", // 講義一覧用にも ACTIVE をセット
+      phase: "GRADUATED", // 卒業済（共通プールに移動済み）
+      lastAttemptAt: card.lecturePool.lastAttemptAt ?? now,
     },
     commonPool: {
       fsrs: initialFsrsCard,
@@ -415,18 +440,71 @@ export function graduateCardToCommonPool(
   };
 }
 
-/** 講義プールへ降格（FSRS履歴の完全リセット） */
-export function demoteCardToLecturePool(card: Card): Card {
+/** 共通プールから講義プールへ降格（FSRS履歴リセット ➔ 未卒業・連続正解0・lastAttemptAt=現在時刻） */
+export function demoteCardToLecturePool(
+  card: Card,
+  now: Date = new Date(),
+): Card {
+  const nowIso = now.toISOString();
+  return {
+    ...card,
+    lecturePool: {
+      phase: "UNGRADUATED", // 一度取り組んでいるため未卒業（連続正解0）へ戻す
+      consecutiveCorrect: 0,
+      lastAttemptAt: nowIso,
+    },
+    commonPool: null, // ★ FSRSデータは完全破棄・リセット
+    updatedAt: nowIso,
+  };
+}
+
+/** カードを完全初期状態（未実施: UNATTEMPTED）へ手動リセット */
+export function resetCardToUnattempted(card: Card): Card {
   const now = new Date().toISOString();
   return {
     ...card,
     lecturePool: {
-      phase: "UNMEMORIZED", // 未暗記に戻す
+      phase: "UNATTEMPTED",
       consecutiveCorrect: 0,
-      lastCorrectAt: null,
+      lastAttemptAt: null,
     },
-    commonPool: null, // ★ FSRSデータは完全破棄・リセット
+    commonPool: null,
     updatedAt: now,
+  };
+}
+
+/**
+ * 旧スキーマ（UNMEMORIZED / WAITING / ACTIVE, lastCorrectAt）からの後方互換マイグレーション
+ */
+export function normalizeLecturePoolState(raw: unknown): CardLecturePoolState {
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const rawPhase = String(obj.phase ?? "UNATTEMPTED");
+  const consecutiveCorrect =
+    typeof obj.consecutiveCorrect === "number" ? obj.consecutiveCorrect : 0;
+  const lastAttemptAt =
+    typeof obj.lastAttemptAt === "string"
+      ? obj.lastAttemptAt
+      : typeof obj.lastCorrectAt === "string"
+        ? obj.lastCorrectAt
+        : null;
+
+  let phase: LectureCardPhase;
+  if (rawPhase === "GRADUATED" || rawPhase === "ACTIVE") {
+    phase = "GRADUATED";
+  } else if (rawPhase === "GRADUATION_RECOMMENDED") {
+    phase = "GRADUATION_RECOMMENDED";
+  } else if (rawPhase === "UNGRADUATED" || rawPhase === "WAITING") {
+    phase = consecutiveCorrect >= 2 ? "GRADUATION_RECOMMENDED" : "UNGRADUATED";
+  } else if (rawPhase === "UNMEMORIZED") {
+    phase = lastAttemptAt ? "UNGRADUATED" : "UNATTEMPTED";
+  } else {
+    phase = "UNATTEMPTED";
+  }
+
+  return {
+    phase,
+    consecutiveCorrect,
+    lastAttemptAt,
   };
 }
 
@@ -488,7 +566,7 @@ export function importBackupData(
       back: record.back,
       isSuspended: record.isSuspended,
       bundleId: record.bundleId,
-      lecturePool: record.lecturePool,
+      lecturePool: normalizeLecturePoolState(record.lecturePool),
       commonPool: record.commonPool,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,

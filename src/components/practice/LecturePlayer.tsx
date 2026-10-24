@@ -1,21 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { XIcon, ShuffleIcon } from "../icons";
+import type { LectureCheckCategory } from "../../types/schema";
+import { XIcon, ShuffleIcon, ArrowUpRightIcon } from "../icons";
 
 export interface PracticeCardItem {
   id: string;
   front: string;
   back: string;
-  /** カード左上に表示する任意フェーズバッジ等（例: "未暗記", "待機解除(1連続正解)"） */
+  /** カード左上に表示する任意フェーズバッジ等 */
   badge?: string;
+  /** チェックモードにおける出題優先度区分（3 > 2 > 1 の色分けに使用） */
+  checkCategory?: LectureCheckCategory;
 }
 
 export interface LecturePlayerProps {
   lectureTitle: string;
   cards: PracticeCardItem[];
-  /** 演習モード（省略時は汎用/自由演習扱い） */
+  /** 演習モード（TRAINING = チェック、FREE_PRACTICE = 全問） */
   mode?: "TRAINING" | "FREE_PRACTICE";
   /** ヘッダー左上のカスタムバッジ文字列 */
   headerBadgeText?: string;
+  /** 現在の講義内の「卒業推奨」カード枚数（チェック完了画面での一括移動用） */
+  recommendedCount?: number;
+  /** 「卒業推奨」カードを共通プールへ一括移動するコールバック */
+  onGraduateRecommended?: () => number;
   /** 回答発生時の通知コールバック */
   onAnswer?: (cardId: string, result: "correct" | "incorrect") => void;
   /** 全問終了時の通知コールバック */
@@ -37,6 +44,8 @@ export function LecturePlayer({
   cards,
   mode = "FREE_PRACTICE",
   headerBadgeText,
+  recommendedCount = 0,
+  onGraduateRecommended,
   onAnswer,
   onFinish,
   onClose,
@@ -47,6 +56,7 @@ export function LecturePlayer({
   const [answers, setAnswers] = useState<Record<string, "correct" | "incorrect">>({});
   const [isCompleted, setIsCompleted] = useState(false);
   const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
+  const [graduatedNoticeCount, setGraduatedNoticeCount] = useState<number | null>(null);
 
   const transitionTimeoutRef = useRef<number | null>(null);
 
@@ -299,12 +309,12 @@ export function LecturePlayer({
           <div className="text-center space-y-2">
             <span className="text-4xl">🎉</span>
             <h2 className="text-lg font-bold text-white">
-              {mode === "TRAINING" ? "短期特訓が完了しました" : "演習が完了しました"}
+              {mode === "TRAINING" ? "チェックが完了しました" : "全問演習が完了しました"}
             </h2>
             <p className="text-xs text-slate-400">{lectureTitle}</p>
             {mode === "TRAINING" && (
               <p className="text-[11px] text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 rounded-lg py-1.5 px-3">
-                正解したカードは待機ロック（8h）または共通プール（卒業）へ移行しました
+                1回正解カードは「未卒業（8h待機）」へ、2回以上連続正解カードは「卒業推奨」へ更新されました
               </p>
             )}
           </div>
@@ -327,6 +337,31 @@ export function LecturePlayer({
               <span className="font-mono font-bold text-indigo-400 text-sm">{correctRate} %</span>
             </div>
           </div>
+
+          {graduatedNoticeCount !== null && (
+            <div className="text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 rounded-xl py-2.5 px-3 text-center">
+              🎓 {graduatedNoticeCount} 枚の「卒業推奨」カードを共通プール（卒業済）へ移動しました！
+            </div>
+          )}
+
+          {mode === "TRAINING" &&
+            onGraduateRecommended &&
+            recommendedCount > 0 &&
+            graduatedNoticeCount === null && (
+              <button
+                type="button"
+                onClick={() => {
+                  const count = onGraduateRecommended();
+                  setGraduatedNoticeCount(count);
+                }}
+                className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+              >
+                <ArrowUpRightIcon size={14} />
+                <span>
+                  🎓 卒業推奨カードを共通プールへ一括移動 ({recommendedCount}枚)
+                </span>
+              </button>
+            )}
 
           <div className="flex items-center space-x-2">
             {mode === "FREE_PRACTICE" && (
@@ -367,12 +402,12 @@ export function LecturePlayer({
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
               mode === "TRAINING"
-                ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
                 : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
             }`}
           >
             {headerBadgeText ??
-              (mode === "TRAINING" ? "⚡ 短期特訓モード" : "🔁 自由演習（集中ループ）")}
+              (mode === "TRAINING" ? "✅ チェックモード (優先度: 3 > 2 > 1)" : "🔁 全問モード")}
           </span>
           <h2 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md">
             {lectureTitle}
@@ -452,16 +487,39 @@ export function LecturePlayer({
                 transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
               }}
             >
-              {/* 表面 (問題面) */}
+              {/* 表面 (問題面) — チェック区分 3 / 2 / 1 でカード色を分ける */}
               <div
-                className="absolute inset-0 bg-slate-900 border border-slate-800 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-slate-700 transition-colors"
+                className={`absolute inset-0 rounded-2xl p-7 flex flex-col justify-between shadow-2xl transition-colors border ${
+                  currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
+                    ? "bg-linear-to-b from-slate-900 to-emerald-950/35 border-emerald-500/60 hover:border-emerald-400/80"
+                    : currentCard.checkCategory === "PRIORITY_2_UNATTEMPTED"
+                      ? "bg-linear-to-b from-slate-900 to-indigo-950/35 border-indigo-500/60 hover:border-indigo-400/80"
+                      : currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK"
+                        ? "bg-linear-to-b from-slate-900 to-amber-950/35 border-amber-500/60 hover:border-amber-400/80"
+                        : "bg-slate-900 border-slate-800 hover:border-slate-700"
+                }`}
                 style={{ backfaceVisibility: "hidden" }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
                       表面（問題）
                     </span>
+                    {currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED" && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-600/60">
+                        ③ 定着確認 (連続正解・8h経過)
+                      </span>
+                    )}
+                    {currentCard.checkCategory === "PRIORITY_2_UNATTEMPTED" && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-950/90 text-indigo-300 border border-indigo-600/60">
+                        ② 未実施 (新規挑戦)
+                      </span>
+                    )}
+                    {currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK" && (
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-950/90 text-amber-300 border border-amber-600/60">
+                        ① 弱点リベンジ (連続正解0)
+                      </span>
+                    )}
                     {currentCard.badge && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                         {currentCard.badge}
@@ -489,9 +547,15 @@ export function LecturePlayer({
                 </div>
               </div>
 
-              {/* 裏面 (解答面) */}
+              {/* 裏面 (解答面) — チェック区分 3 / 2 / 1 でカード色を分ける */}
               <div
-                className="absolute inset-0 bg-linear-to-b from-slate-900 to-indigo-950/30 border border-indigo-500/50 rounded-2xl p-7 flex flex-col justify-between shadow-2xl hover:border-indigo-500/70 transition-colors"
+                className={`absolute inset-0 rounded-2xl p-7 flex flex-col justify-between shadow-2xl transition-colors border ${
+                  currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
+                    ? "bg-linear-to-b from-slate-900 to-emerald-950/45 border-emerald-400/70"
+                    : currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK"
+                      ? "bg-linear-to-b from-slate-900 to-amber-950/45 border-amber-400/70"
+                      : "bg-linear-to-b from-slate-900 to-indigo-950/40 border-indigo-500/60"
+                }`}
                 style={{
                   backfaceVisibility: "hidden",
                   transform: "rotateY(180deg)",

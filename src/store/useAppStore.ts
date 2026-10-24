@@ -18,6 +18,8 @@ import type {
 import {
   createNewCard,
   demoteCardToLecturePool,
+  resetCardToUnattempted,
+  normalizeLecturePoolState,
   getSuspensionStatus,
   isWaitingCardLocked,
   importBackupData,
@@ -121,6 +123,11 @@ interface AppState {
     result: "correct" | "incorrect",
     now?: Date,
   ) => LectureTrainingTransitionResult | null;
+  graduateRecommendedCardsInLecture: (
+    lectureId: string,
+    now?: Date,
+  ) => number;
+  batchGraduateCards: (cardIds: string[], now?: Date) => number;
 
   // Common Pool & Recovery Room actions
   getCommonPoolQueue: (
@@ -405,7 +412,7 @@ export const useAppStore = create<AppState>()(
         const now = nowDate.toISOString();
         const { requestRetention, dayCutoffHour } = get().settings;
 
-        if (phase === "ACTIVE") {
+        if (phase === "GRADUATED") {
           // Promote to common pool with Rating.Good background calculation
           updatedCard = promoteCardToGraduate(
             card,
@@ -413,26 +420,31 @@ export const useAppStore = create<AppState>()(
             requestRetention,
             dayCutoffHour,
           );
-        } else if (phase === "WAITING") {
+        } else if (phase === "GRADUATION_RECOMMENDED") {
           updatedCard = {
             ...card,
             lecturePool: {
-              phase: "WAITING",
-              consecutiveCorrect: 1,
-              lastCorrectAt: now,
+              phase: "GRADUATION_RECOMMENDED",
+              consecutiveCorrect: Math.max(
+                card.lecturePool.consecutiveCorrect,
+                2,
+              ),
+              lastAttemptAt: card.lecturePool.lastAttemptAt ?? now,
             },
             commonPool: null,
             updatedAt: now,
           };
+        } else if (phase === "UNGRADUATED") {
+          updatedCard = demoteCardToLecturePool(card, nowDate);
         } else {
-          // Demote to UNMEMORIZED
-          updatedCard = demoteCardToLecturePool(card);
+          // Reset to UNATTEMPTED (未実施)
+          updatedCard = resetCardToUnattempted(card);
         }
 
         set((state) => ({
           cards: state.cards.map((c) => (c.id === id ? updatedCard : c)),
           sessionState:
-            phase !== "ACTIVE"
+            phase !== "GRADUATED"
               ? {
                   ...state.sessionState,
                   retryCardIds: state.sessionState.retryCardIds.filter(
@@ -462,14 +474,7 @@ export const useAppStore = create<AppState>()(
         const card = get().cards.find((c) => c.id === cardId);
         if (!card) return null;
 
-        const { requestRetention, dayCutoffHour } = get().settings;
-        const transitionResult = applyLectureTrainingAnswer(
-          card,
-          result,
-          now,
-          requestRetention,
-          dayCutoffHour,
-        );
+        const transitionResult = applyLectureTrainingAnswer(card, result, now);
 
         set((state) => ({
           cards: state.cards.map((c) =>
@@ -478,6 +483,58 @@ export const useAppStore = create<AppState>()(
         }));
 
         return transitionResult;
+      },
+
+      graduateRecommendedCardsInLecture: (lectureId, now = new Date()) => {
+        const state = get();
+        const { requestRetention, dayCutoffHour } = state.settings;
+        let graduatedCount = 0;
+
+        set((prev) => ({
+          cards: prev.cards.map((card) => {
+            if (
+              card.lectureId === lectureId &&
+              !card.isSuspended &&
+              card.lecturePool.phase === "GRADUATION_RECOMMENDED"
+            ) {
+              graduatedCount++;
+              return promoteCardToGraduate(
+                card,
+                now,
+                requestRetention,
+                dayCutoffHour,
+              );
+            }
+            return card;
+          }),
+        }));
+
+        return graduatedCount;
+      },
+
+      batchGraduateCards: (cardIds, now = new Date()) => {
+        if (cardIds.length === 0) return 0;
+        const targetSet = new Set(cardIds);
+        const state = get();
+        const { requestRetention, dayCutoffHour } = state.settings;
+        let graduatedCount = 0;
+
+        set((prev) => ({
+          cards: prev.cards.map((card) => {
+            if (targetSet.has(card.id) && card.lecturePool.phase !== "GRADUATED") {
+              graduatedCount++;
+              return promoteCardToGraduate(
+                card,
+                now,
+                requestRetention,
+                dayCutoffHour,
+              );
+            }
+            return card;
+          }),
+        }));
+
+        return graduatedCount;
       },
 
       getCommonPoolQueue: (now = new Date(), batchSize) => {
@@ -767,9 +824,10 @@ export const useAppStore = create<AppState>()(
       getLectureProgress: (lectureId) => {
         const state = get();
         const cards = state.cards.filter((c) => c.lectureId === lectureId);
-        let unmemorizedCount = 0;
-        let waitingCount = 0;
-        let activeCount = 0;
+        let unattemptedCount = 0;
+        let ungraduatedCount = 0;
+        let graduationRecommendedCount = 0;
+        let graduatedCount = 0;
         let retryCount = 0;
         let dueCount = 0;
         let earliestUnlockAt: string | null = null;
@@ -782,42 +840,49 @@ export const useAppStore = create<AppState>()(
         const retrySet = new Set(state.sessionState.retryCardIds);
 
         for (const card of cards) {
-          if (card.lecturePool.phase === "UNMEMORIZED") {
-            unmemorizedCount++;
-          } else if (card.lecturePool.phase === "WAITING") {
-            waitingCount++;
-            if (isWaitingCardLocked(card, waitingHours, now)) {
-              isWaitingLocked = true;
-              if (card.lecturePool.lastCorrectAt) {
-                const unlock = new Date(card.lecturePool.lastCorrectAt);
-                unlock.setHours(unlock.getHours() + waitingHours);
-                const unlockIso = unlock.toISOString();
-                if (!earliestUnlockAt || unlockIso < earliestUnlockAt) {
-                  earliestUnlockAt = unlockIso;
-                }
+          const { phase, lastAttemptAt } = card.lecturePool;
+          if (phase === "UNATTEMPTED") {
+            unattemptedCount++;
+          } else if (phase === "UNGRADUATED") {
+            ungraduatedCount++;
+          } else if (phase === "GRADUATION_RECOMMENDED") {
+            graduationRecommendedCount++;
+          } else if (phase === "GRADUATED") {
+            graduatedCount++;
+          }
+
+          if (phase !== "GRADUATED" && isWaitingCardLocked(card, waitingHours, now)) {
+            isWaitingLocked = true;
+            if (lastAttemptAt) {
+              const unlock = new Date(lastAttemptAt);
+              unlock.setHours(unlock.getHours() + waitingHours);
+              const unlockIso = unlock.toISOString();
+              if (!earliestUnlockAt || unlockIso < earliestUnlockAt) {
+                earliestUnlockAt = unlockIso;
               }
             }
-          } else if (card.lecturePool.phase === "ACTIVE") {
-            activeCount++;
-            if (
-              !card.isSuspended &&
-              card.commonPool &&
-              !isReviewedToday(card.commonPool.lastReviewedAt, now, cutoffHour)
-            ) {
-              if (retrySet.has(card.id)) {
-                retryCount++;
-              } else if (new Date(card.commonPool.fsrs.due) < nextCutoff) {
-                dueCount++;
-              }
+          }
+
+          if (
+            phase === "GRADUATED" &&
+            !card.isSuspended &&
+            card.commonPool &&
+            !isReviewedToday(card.commonPool.lastReviewedAt, now, cutoffHour)
+          ) {
+            if (retrySet.has(card.id)) {
+              retryCount++;
+            } else if (new Date(card.commonPool.fsrs.due) < nextCutoff) {
+              dueCount++;
             }
           }
         }
 
         return {
           lectureId,
-          unmemorizedCount,
-          waitingCount,
-          activeCount,
+          unattemptedCount,
+          ungraduatedCount,
+          graduationRecommendedCount,
+          graduatedCount,
           retryCount,
           dueCount,
           isWaitingLocked,
@@ -839,7 +904,7 @@ export const useAppStore = create<AppState>()(
         const retrySet = new Set(state.sessionState.retryCardIds);
 
         for (const card of cards) {
-          if (card.lecturePool.phase === "ACTIVE") {
+          if (card.lecturePool.phase === "GRADUATED") {
             activeCount++;
             if (
               !card.isSuspended &&
@@ -937,6 +1002,12 @@ export const useAppStore = create<AppState>()(
           front: "キルヒホッフの第1法則（電流則 KCL）の内容は？",
           back: "回路の任意の接続点（節点）に流入する電流の総和は、流出する電流の総和に等しい（ΣI = 0）。",
         });
+        // 未卒業（連続正解0・前回ミス）サンプル
+        card2.lecturePool = {
+          phase: "UNGRADUATED",
+          consecutiveCorrect: 0,
+          lastAttemptAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        };
 
         const card3 = createNewCard({
           id: "card_c1_3",
@@ -945,11 +1016,11 @@ export const useAppStore = create<AppState>()(
           front: "キルヒホッフの第2法則（電圧則 KVL）の内容は？",
           back: "回路内の任意の閉路に沿って一周したとき、起電力の総和と電圧降下の総和は等しい（ΣV = 0）。",
         });
-        // 待機中サンプル
+        // 未卒業（1回正解・8時間経過済み -> チェック区分3の対象）サンプル
         card3.lecturePool = {
-          phase: "WAITING",
+          phase: "UNGRADUATED",
           consecutiveCorrect: 1,
-          lastCorrectAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(), // 4時間前
+          lastAttemptAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
         };
 
         const card4 = promoteCardToGraduate(
@@ -991,6 +1062,14 @@ export const useAppStore = create<AppState>()(
         selectedCourseId: state.selectedCourseId,
         selectedLectureId: state.selectedLectureId,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state || !Array.isArray(state.cards)) return;
+        // 旧データスキーマからの自動正規化
+        state.cards = state.cards.map((card) => ({
+          ...card,
+          lecturePool: normalizeLecturePoolState(card.lecturePool),
+        }));
+      },
     },
   ),
 );

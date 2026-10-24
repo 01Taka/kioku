@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "../store/useAppStore";
-import type { LectureCardPhase, PriorityMode, Card } from "../types/schema";
+import type { LectureCardPhase, LectureCheckCategory, PriorityMode, Card } from "../types/schema";
 import { isWaitingCardLocked } from "../types/schema";
 import { AiBatchImportModal } from "./AiBatchImportModal";
 import { LecturePlayer, type PracticeCardItem } from "./practice/LecturePlayer";
@@ -42,6 +42,7 @@ export function LecturePoolDetail() {
     addCardsBatch,
     isDuplicateOfLastBatch,
     setCardPhase,
+    graduateRecommendedCardsInLecture,
     toggleCardSuspension,
     answerLectureTrainingCard,
     getLectureProgress,
@@ -105,6 +106,17 @@ export function LecturePoolDetail() {
     );
   }, [selectedLectureId, getLectureTrainingQueue, cards, settings.waitingDurationHours, nowTick]);
 
+  // チェック出題カテゴリ (3 > 2 > 1) のマップ
+  const checkCategoryMap = useMemo(() => {
+    const map = new Map<string, LectureCheckCategory>();
+    if (trainingQueue?.items) {
+      for (const item of trainingQueue.items) {
+        map.set(item.card.id, item.checkCategory);
+      }
+    }
+    return map;
+  }, [trainingQueue]);
+
   const filteredCards = useMemo(() => {
     const trainingCardIds = new Set(trainingQueue?.cards.map((c) => c.id) ?? []);
     const q = cardSearchQuery.trim().toLowerCase();
@@ -145,35 +157,47 @@ export function LecturePoolDetail() {
   }
 
   // クールダウン残り時間の計算 (nowTick に連動してリアルタイム更新)
-  const getRemainingCooldownText = (lastCorrectAt: string | null) => {
-    if (!lastCorrectAt) return null;
-    const unlockTime = new Date(lastCorrectAt);
+  const getRemainingCooldownText = (lastAttemptAt: string | null) => {
+    if (!lastAttemptAt) return null;
+    const unlockTime = new Date(lastAttemptAt);
     unlockTime.setHours(unlockTime.getHours() + settings.waitingDurationHours);
     const diffMs = unlockTime.getTime() - nowTick;
-    if (diffMs <= 0) return "ロック解除済み (出題可能)";
+    if (diffMs <= 0) return "規定時間経過 (チェック出題可能)";
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    return `あと ${hours}時間 ${minutes}分 ロック中`;
+    return `あと ${hours}時間 ${minutes}分 クールダウン中`;
   };
 
-  // 短期特訓スタート（未暗記＋待機解除済みカードのみ出題し、状態遷移を行う）
+  // チェックモードスタート（3 > 2 > 1 の優先順で出題し、状態遷移を行う）
   const startTrainingMode = () => {
-    if (!trainingQueue || trainingQueue.cards.length === 0) return;
+    if (!trainingQueue || trainingQueue.items.length === 0) return;
     setPracticeSession({
       mode: "TRAINING",
-      cards: trainingQueue.cards.map((c) => ({
-        id: c.id,
-        front: c.front,
-        back: c.back,
-        badge:
-          c.lecturePool.phase === "WAITING"
-            ? "待機解除 (正解で卒業)"
-            : "未暗記 (正解で8h待機)",
-      })),
+      cards: trainingQueue.items.map((item) => {
+        const c = item.card;
+        let badge = "";
+        if (item.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED") {
+          badge =
+            c.lecturePool.phase === "GRADUATION_RECOMMENDED"
+              ? `卒業推奨 (連続${c.lecturePool.consecutiveCorrect}回正解)`
+              : `未卒業 (連続${c.lecturePool.consecutiveCorrect}回正解 → 正解で卒業推奨)`;
+        } else if (item.checkCategory === "PRIORITY_2_UNATTEMPTED") {
+          badge = "未実施 (初回チャレンジ)";
+        } else {
+          badge = "未卒業 (連続正解0・リベンジ)";
+        }
+        return {
+          id: c.id,
+          front: c.front,
+          back: c.back,
+          checkCategory: item.checkCategory,
+          badge,
+        };
+      }),
     });
   };
 
-  // 自由演習ループスタート（休止以外の全講義カードを状態変更なしで演習）
+  // 全問モードスタート（休止以外の全講義カードを状態変更なしで演習）
   const startFreePracticeMode = () => {
     const activeLectureCards = lectureCards.filter((c) => !c.isSuspended);
     if (activeLectureCards.length === 0) return;
@@ -184,11 +208,13 @@ export function LecturePoolDetail() {
         front: c.front,
         back: c.back,
         badge:
-          c.lecturePool.phase === "ACTIVE"
+          c.lecturePool.phase === "GRADUATED"
             ? "卒業済"
-            : c.lecturePool.phase === "WAITING"
-              ? "待機中"
-              : "未暗記",
+            : c.lecturePool.phase === "GRADUATION_RECOMMENDED"
+              ? `卒業推奨 (連続${c.lecturePool.consecutiveCorrect}回正解)`
+              : c.lecturePool.phase === "UNGRADUATED"
+                ? `未卒業 (連続${c.lecturePool.consecutiveCorrect}回正解)`
+                : "未実施",
       })),
     });
   };
@@ -336,27 +362,44 @@ export function LecturePoolDetail() {
 
           {/* 講義操作・設定 */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {/* 短期特訓スタートボタン（状態遷移あり） */}
+            {/* チェックモードスタートボタン（3 > 2 > 1 の優先順・状態遷移あり） */}
             <button
               onClick={startTrainingMode}
               disabled={!trainingQueue || trainingQueue.cards.length === 0}
               className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md shadow-amber-600/30 flex items-center space-x-1.5 transition cursor-pointer"
-              title="未暗記と8h待機解除済みのカードを出題し、短期暗記・卒業判定を行います"
+              title="チェックモード: ③8h経過の連続正解カード ＞ ②未実施 ＞ ①連続正解0の未卒業 の優先順で出題します"
             >
               <PlayIcon size={12} />
-              <span>⚡ 短期特訓 ({trainingQueue?.cards.length ?? 0}枚)</span>
+              <span>✅ チェック ({trainingQueue?.cards.length ?? 0}枚)</span>
             </button>
 
-            {/* 自由演習（集中ループ）ボタン（状態変更なし） */}
+            {/* 全問モードボタン（状態変更なし） */}
             <button
               onClick={startFreePracticeMode}
               disabled={lectureCards.filter((c) => !c.isSuspended).length === 0}
               className="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg border border-indigo-400/30 flex items-center space-x-1.5 transition cursor-pointer"
-              title="待機時間や卒業ステータスを変更せず、この講義のカードを何度でも集中ループ演習します"
+              title="全問モード: ステータスを変更せず、この講義のすべてのカードを出題します"
             >
               <ShuffleIcon size={12} />
-              <span>🔁 自由演習</span>
+              <span>🔁 全問 ({lectureCards.filter((c) => !c.isSuspended).length}枚)</span>
             </button>
+
+            {/* 卒業推奨カードを共通プールへ一括移動ボタン */}
+            {progress && progress.graduationRecommendedCount > 0 && (
+              <button
+                onClick={() => {
+                  const count = graduateRecommendedCardsInLecture(selectedLecture.id);
+                  if (count > 0) {
+                    alert(`🎓 ${count} 枚の卒業推奨カードを共通プール（卒業済）へ移動しました！`);
+                  }
+                }}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg shadow-md shadow-emerald-600/30 flex items-center space-x-1.5 transition cursor-pointer"
+                title="現在2回以上連続で正解している卒業推奨カードをまとめて共通プールへ移動します"
+              >
+                <ArrowUpRightIcon size={13} />
+                <span>🎓 卒業推奨を一括移動 ({progress.graduationRecommendedCount}枚)</span>
+              </button>
+            )}
 
             {/* 優先度設定 */}
             <div className="flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-700/60">
@@ -409,29 +452,44 @@ export function LecturePoolDetail() {
         {progress && (
           <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              {/* 特訓可能キューサマリー */}
-              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 font-medium shadow-xs">
-                <span>⚡ 特訓可能:</span>
+              {/* チェック出題可能キューサマリー (3 > 2 > 1) */}
+              <span className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-700/80 text-slate-200 font-medium shadow-xs">
+                <span>✅ チェック対象:</span>
                 <strong className="font-mono text-white text-xs">{trainingQueue?.cards.length ?? 0}</strong>
-                <span className="text-[10px] opacity-75">
-                  (未 {trainingQueue?.unmemorizedCount ?? 0} / 解除 {trainingQueue?.unlockedWaitingCount ?? 0})
+                <span className="text-[10px] flex items-center space-x-1.5 ml-1">
+                  <span className="text-emerald-300" title="優先度3: 連続1回以上正解かつ規定時間経過">
+                    ③定着:{trainingQueue?.priority3Count ?? 0}
+                  </span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-indigo-300" title="優先度2: 未実施">
+                    ②未実施:{trainingQueue?.priority2Count ?? 0}
+                  </span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-amber-300" title="優先度1: 連続正解0の未卒業">
+                    ①弱点:{trainingQueue?.priority1Count ?? 0}
+                  </span>
                 </span>
               </span>
 
               <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-                <span className="text-slate-300">未暗記: </span>
-                <strong className="font-mono text-slate-100">{progress.unmemorizedCount}</strong>
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+                <span className="text-slate-300">未実施: </span>
+                <strong className="font-mono text-indigo-300">{progress.unattemptedCount}</strong>
               </span>
               <span className="flex items-center space-x-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                <span className="text-slate-300">待機中 (8hロック): </span>
-                <strong className="font-mono text-amber-300">{progress.waitingCount}</strong>
+                <span className="text-slate-300">未卒業: </span>
+                <strong className="font-mono text-amber-300">{progress.ungraduatedCount}</strong>
+              </span>
+              <span className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                <span className="text-slate-300">卒業推奨: </span>
+                <strong className="font-mono text-cyan-300">{progress.graduationRecommendedCount}</strong>
               </span>
               <span className="flex items-center space-x-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                 <span className="text-slate-300">卒業済 (共通FSRS): </span>
-                <strong className="font-mono text-emerald-300">{progress.activeCount}</strong>
+                <strong className="font-mono text-emerald-300">{progress.graduatedCount}</strong>
               </span>
             </div>
 
@@ -440,7 +498,7 @@ export function LecturePoolDetail() {
               <div className="flex items-center space-x-1.5 text-amber-300 bg-amber-950/40 border border-amber-800/60 px-2.5 py-1 rounded-md">
                 <ClockIcon size={13} />
                 <span>
-                  最短ロック解除:{" "}
+                  最短チェック解禁 (③):{" "}
                   {getRemainingCooldownText(
                     new Date(
                       new Date(trainingQueue.earliestUnlockAt).getTime() -
@@ -451,30 +509,37 @@ export function LecturePoolDetail() {
               </div>
             )}
 
-            {/* 3色積み上げプログレスバー（卒業済 / 待機中 / 未暗記） */}
+            {/* 4色積み上げプログレスバー（卒業済 / 卒業推奨 / 未卒業 / 未実施） */}
             {lectureCards.length > 0 && (
               <div className="w-full pt-1">
                 <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex">
                   <div
                     className="bg-emerald-500 h-full transition-all duration-300"
                     style={{
-                      width: `${(progress.activeCount / lectureCards.length) * 100}%`,
+                      width: `${(progress.graduatedCount / lectureCards.length) * 100}%`,
                     }}
-                    title={`卒業済: ${progress.activeCount}枚`}
+                    title={`卒業済: ${progress.graduatedCount}枚`}
+                  />
+                  <div
+                    className="bg-cyan-400 h-full transition-all duration-300"
+                    style={{
+                      width: `${(progress.graduationRecommendedCount / lectureCards.length) * 100}%`,
+                    }}
+                    title={`卒業推奨: ${progress.graduationRecommendedCount}枚`}
                   />
                   <div
                     className="bg-amber-400 h-full transition-all duration-300"
                     style={{
-                      width: `${(progress.waitingCount / lectureCards.length) * 100}%`,
+                      width: `${(progress.ungraduatedCount / lectureCards.length) * 100}%`,
                     }}
-                    title={`待機中: ${progress.waitingCount}枚`}
+                    title={`未卒業: ${progress.ungraduatedCount}枚`}
                   />
                   <div
-                    className="bg-slate-500 h-full transition-all duration-300"
+                    className="bg-indigo-500 h-full transition-all duration-300"
                     style={{
-                      width: `${(progress.unmemorizedCount / lectureCards.length) * 100}%`,
+                      width: `${(progress.unattemptedCount / lectureCards.length) * 100}%`,
                     }}
-                    title={`未暗記: ${progress.unmemorizedCount}枚`}
+                    title={`未実施: ${progress.unattemptedCount}枚`}
                   />
                 </div>
               </div>
@@ -661,10 +726,10 @@ export function LecturePoolDetail() {
             </div>
 
             {/* フィルタータブ */}
-            <div className="flex items-center space-x-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+            <div className="flex flex-wrap items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
               <button
                 onClick={() => setPhaseFilter("ALL")}
-                className={`px-2.5 py-1 rounded transition ${
+                className={`px-2.5 py-1 rounded transition cursor-pointer ${
                   phaseFilter === "ALL" ? "bg-slate-800 text-white font-medium" : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -672,40 +737,48 @@ export function LecturePoolDetail() {
               </button>
               <button
                 onClick={() => setPhaseFilter("TRAINING")}
-                className={`px-2.5 py-1 rounded transition flex items-center space-x-1 ${
-                  phaseFilter === "TRAINING" ? "bg-indigo-600 text-white font-medium shadow-xs" : "text-indigo-300 hover:text-white"
+                className={`px-2.5 py-1 rounded transition flex items-center space-x-1 cursor-pointer ${
+                  phaseFilter === "TRAINING" ? "bg-amber-600 text-white font-medium shadow-xs" : "text-amber-300 hover:text-white"
                 }`}
-                title="未暗記および待機解除済みの出題対象カード"
+                title="チェックモードの出題対象カード (③8h経過 ＞ ②未実施 ＞ ①連続正解0)"
               >
-                <span>⚡ 特訓可能 ({trainingQueue?.cards.length ?? 0})</span>
+                <span>✅ チェック対象 ({trainingQueue?.cards.length ?? 0})</span>
               </button>
               <button
-                onClick={() => setPhaseFilter("UNMEMORIZED")}
-                className={`px-2.5 py-1 rounded transition ${
-                  phaseFilter === "UNMEMORIZED" ? "bg-slate-800 text-slate-200 font-medium" : "text-slate-400 hover:text-white"
+                onClick={() => setPhaseFilter("UNATTEMPTED")}
+                className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                  phaseFilter === "UNATTEMPTED" ? "bg-slate-800 text-indigo-300 font-medium" : "text-slate-400 hover:text-white"
                 }`}
               >
-                未暗記 ({progress?.unmemorizedCount})
+                未実施 ({progress?.unattemptedCount})
               </button>
               <button
-                onClick={() => setPhaseFilter("WAITING")}
-                className={`px-2.5 py-1 rounded transition ${
-                  phaseFilter === "WAITING" ? "bg-slate-800 text-amber-300 font-medium" : "text-slate-400 hover:text-white"
+                onClick={() => setPhaseFilter("UNGRADUATED")}
+                className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                  phaseFilter === "UNGRADUATED" ? "bg-slate-800 text-amber-300 font-medium" : "text-slate-400 hover:text-white"
                 }`}
               >
-                待機中 ({progress?.waitingCount})
+                未卒業 ({progress?.ungraduatedCount})
               </button>
               <button
-                onClick={() => setPhaseFilter("ACTIVE")}
-                className={`px-2.5 py-1 rounded transition ${
-                  phaseFilter === "ACTIVE" ? "bg-slate-800 text-emerald-300 font-medium" : "text-slate-400 hover:text-white"
+                onClick={() => setPhaseFilter("GRADUATION_RECOMMENDED")}
+                className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                  phaseFilter === "GRADUATION_RECOMMENDED" ? "bg-slate-800 text-cyan-300 font-medium" : "text-slate-400 hover:text-white"
                 }`}
               >
-                卒業済 ({progress?.activeCount})
+                卒業推奨 ({progress?.graduationRecommendedCount})
+              </button>
+              <button
+                onClick={() => setPhaseFilter("GRADUATED")}
+                className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                  phaseFilter === "GRADUATED" ? "bg-slate-800 text-emerald-300 font-medium" : "text-slate-400 hover:text-white"
+                }`}
+              >
+                卒業済 ({progress?.graduatedCount})
               </button>
               <button
                 onClick={() => setPhaseFilter("SUSPENDED")}
-                className={`px-2.5 py-1 rounded transition ${
+                className={`px-2.5 py-1 rounded transition cursor-pointer ${
                   phaseFilter === "SUSPENDED" ? "bg-slate-800 text-rose-300 font-medium" : "text-slate-400 hover:text-white"
                 }`}
               >
@@ -723,19 +796,30 @@ export function LecturePoolDetail() {
             <div className="space-y-2.5">
               {filteredCards.map((card, idx) => {
                 const phase = card.lecturePool.phase;
+                const streak = card.lecturePool.consecutiveCorrect;
+                const checkCat = checkCategoryMap.get(card.id);
                 const isLocked = isWaitingCardLocked(
                   card,
                   settings.waitingDurationHours,
                   new Date(nowTick),
                 );
-                const cooldownText = getRemainingCooldownText(card.lecturePool.lastCorrectAt);
+                const cooldownText = getRemainingCooldownText(card.lecturePool.lastAttemptAt);
+
+                // チェック対象 (3 > 2 > 1) に応じたカード枠線の色分け
+                const cardBorderStyle = card.isSuspended
+                  ? "border-rose-900/40 opacity-70"
+                  : checkCat === "PRIORITY_3_COOLDOWN_CLEARED"
+                    ? "border-emerald-500/60 bg-emerald-950/15 hover:border-emerald-400"
+                    : checkCat === "PRIORITY_2_UNATTEMPTED"
+                      ? "border-indigo-500/50 bg-indigo-950/15 hover:border-indigo-400"
+                      : checkCat === "PRIORITY_1_ZERO_STREAK"
+                        ? "border-amber-500/60 bg-amber-950/15 hover:border-amber-400"
+                        : "border-slate-800 hover:border-slate-700";
 
                 return (
                   <div
                     key={card.id}
-                    className={`bg-slate-900/70 border rounded-xl p-3.5 transition hover:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                      card.isSuspended ? "border-rose-900/40 opacity-70" : "border-slate-800"
-                    }`}
+                    className={`bg-slate-900/70 border rounded-xl p-3.5 transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${cardBorderStyle}`}
                   >
                     {/* 左側: 番号 & ステータス & 内容 */}
                     <div className="flex items-start space-x-3 flex-1 min-w-0">
@@ -744,26 +828,59 @@ export function LecturePoolDetail() {
                       <div className="space-y-1.5 flex-1 min-w-0">
                         {/* ステータスバッジ群 */}
                         <div className="flex flex-wrap items-center gap-1.5">
-                          {phase === "UNMEMORIZED" && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                              未暗記
+                          {/* チェック出題優先度バッジ (3 > 2 > 1) */}
+                          {checkCat === "PRIORITY_3_COOLDOWN_CLEARED" && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-500/60">
+                              ③ チェック最優先 (8h経過・定着確認)
                             </span>
                           )}
-                          {phase === "WAITING" && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-300 border border-amber-800/80 flex items-center space-x-1">
-                              <ClockIcon size={10} />
-                              <span>待機中 ({isLocked ? cooldownText : "解除済"})</span>
+                          {checkCat === "PRIORITY_2_UNATTEMPTED" && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-950/90 text-indigo-300 border border-indigo-500/60">
+                              ② チェック対象 (未実施)
                             </span>
                           )}
-                          {phase === "ACTIVE" && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/80 flex items-center space-x-1">
-                              <CheckIcon size={10} />
-                              <span>共通プール (卒業)</span>
+                          {checkCat === "PRIORITY_1_ZERO_STREAK" && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 border border-amber-500/60">
+                              ① チェック対象 (連続正解0・弱点)
                             </span>
                           )}
 
+                          {/* 4フェーズバッジ */}
+                          {phase === "UNATTEMPTED" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                              未実施
+                            </span>
+                          )}
+                          {phase === "UNGRADUATED" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-300 border border-amber-800/80 flex items-center space-x-1">
+                              <span>未卒業 (連続正解: {streak}回)</span>
+                            </span>
+                          )}
+                          {phase === "GRADUATION_RECOMMENDED" && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950/70 text-cyan-300 border border-cyan-700/80 flex items-center space-x-1">
+                              <span>🎓 卒業推奨 (連続正解: {streak}回)</span>
+                            </span>
+                          )}
+                          {phase === "GRADUATED" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/80 flex items-center space-x-1">
+                              <CheckIcon size={10} />
+                              <span>卒業済 (共通プール)</span>
+                            </span>
+                          )}
+
+                          {/* 連続1回以上正解カードの8hクールダウン表示 */}
+                          {(phase === "UNGRADUATED" || phase === "GRADUATION_RECOMMENDED") &&
+                            streak >= 1 &&
+                            isLocked &&
+                            cooldownText && (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700 flex items-center space-x-1">
+                                <ClockIcon size={10} />
+                                <span>{cooldownText}</span>
+                              </span>
+                            )}
+
                           {/* 卒業済みカードの FSRS 詳細情報バッジ (due / R% / リベンジ / 連続ミス) */}
-                          {phase === "ACTIVE" && card.commonPool && (
+                          {phase === "GRADUATED" && card.commonPool && (
                             <>
                               {retryCardSet.has(card.id) && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-700/70">
@@ -833,26 +950,41 @@ export function LecturePoolDetail() {
 
                     {/* 右側: カード操作ボタン群 */}
                     <div className="flex md:flex-col items-end justify-between md:justify-center gap-1.5 flex-shrink-0 text-xs">
-                      {/* 仕様書2-3: 個別スキップ機能（抜け道）「この問題をプールに移動」 */}
-                      {phase !== "ACTIVE" && (
+                      {/* 共通プールへの移動ボタン（卒業推奨 or 個別スキップ） */}
+                      {phase !== "GRADUATED" && (
                         <button
-                          onClick={() => setCardPhase(card.id, "ACTIVE")}
-                          className="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 rounded text-[11px] font-medium flex items-center space-x-1 transition"
-                          title="待機時間を待たずに即時共通プールへ強制昇格"
+                          onClick={() => setCardPhase(card.id, "GRADUATED")}
+                          className={`px-2 py-1 border rounded text-[11px] font-medium flex items-center space-x-1 transition cursor-pointer ${
+                            phase === "GRADUATION_RECOMMENDED"
+                              ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-sm shadow-emerald-600/30"
+                              : "bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-800/60"
+                          }`}
+                          title="このカードを共通プール（卒業済）へ移動"
                         >
                           <ArrowUpRightIcon size={12} />
-                          <span>プールに移動</span>
+                          <span>{phase === "GRADUATION_RECOMMENDED" ? "🎓 卒業させる" : "プールに移動"}</span>
                         </button>
                       )}
 
-                      {/* 降格ボタン */}
-                      {phase !== "UNMEMORIZED" && (
+                      {/* 卒業済から未卒業へ戻すボタン */}
+                      {phase === "GRADUATED" && (
                         <button
-                          onClick={() => setCardPhase(card.id, "UNMEMORIZED")}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition"
-                          title="講義プールの未暗記へ降格（FSRS履歴リセット）"
+                          onClick={() => setCardPhase(card.id, "UNGRADUATED")}
+                          className="px-2 py-1 bg-amber-950/70 hover:bg-amber-900 text-amber-300 border border-amber-800/60 rounded text-[11px] transition cursor-pointer"
+                          title="共通プールから講義プールの「未卒業 (連続正解0)」へ戻します"
                         >
-                          未暗記に戻す
+                          未卒業に戻す
+                        </button>
+                      )}
+
+                      {/* 未実施にリセットボタン */}
+                      {phase !== "UNATTEMPTED" && (
+                        <button
+                          onClick={() => setCardPhase(card.id, "UNATTEMPTED")}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition cursor-pointer"
+                          title="カードの履歴を「未実施」に完全リセットします"
+                        >
+                          未実施にリセット
                         </button>
                       )}
 
@@ -860,7 +992,7 @@ export function LecturePoolDetail() {
                         {/* 休止トグル */}
                         <button
                           onClick={() => toggleCardSuspension(card.id)}
-                          className={`p-1.5 rounded transition ${
+                          className={`p-1.5 rounded transition cursor-pointer ${
                             card.isSuspended
                               ? "bg-rose-950/60 text-rose-300 hover:bg-rose-900 border border-rose-800/60"
                               : "text-slate-400 hover:text-amber-400 hover:bg-slate-800"
@@ -873,7 +1005,7 @@ export function LecturePoolDetail() {
                         {/* 編集 */}
                         <button
                           onClick={() => startEditCard(card)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded transition"
+                          className="p-1.5 text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded transition cursor-pointer"
                           title="カードを編集"
                         >
                           <EditIcon size={13} />
@@ -886,7 +1018,7 @@ export function LecturePoolDetail() {
                               deleteCard(card.id);
                             }
                           }}
-                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
                           title="カードを削除"
                         >
                           <TrashIcon size={13} />
@@ -907,7 +1039,7 @@ export function LecturePoolDetail() {
                                 alert(`${count} 枚のカードを削除しました。`);
                               }
                             }}
-                            className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-slate-800 rounded transition"
+                            className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-slate-800 rounded transition cursor-pointer"
                             title={`一括追加グループ「${card.bundleId}」のカードをすべて削除`}
                           >
                             <UndoIcon size={13} />
@@ -994,7 +1126,7 @@ export function LecturePoolDetail() {
         />
       )}
 
-      {/* 講義カード演習プレイヤー（短期特訓モード / 自由演習モード） */}
+      {/* 講義カード演習プレイヤー（チェックモード / 全問モード） */}
       {practiceSession && (
         <LecturePlayer
           lectureTitle={`${selectedCourse.name} - ${selectedLecture.name}`}
@@ -1004,6 +1136,14 @@ export function LecturePoolDetail() {
             if (practiceSession.mode === "TRAINING") {
               answerLectureTrainingCard(cardId, result);
             }
+          }}
+          recommendedCount={progress?.graduationRecommendedCount ?? 0}
+          onGraduateRecommended={() => {
+            const count = graduateRecommendedCardsInLecture(selectedLecture.id);
+            if (count > 0) {
+              alert(`🎓 ${count} 枚の卒業推奨カードを共通プール（卒業済）へ移動しました！`);
+            }
+            return count;
           }}
           onClose={() => setPracticeSession(null)}
         />

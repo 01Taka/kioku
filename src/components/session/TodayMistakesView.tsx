@@ -27,7 +27,7 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
     const mistakeIdSet = new Set(sessionState.todayMistakeCardIds);
 
     return cards
-      .filter((c) => mistakeIdSet.has(c.id) && c.lecturePool.phase === "ACTIVE")
+      .filter((c) => mistakeIdSet.has(c.id) && c.lecturePool.phase === "GRADUATED")
       .map((card) => ({
         card,
         courseName: courseMap.get(card.courseId)?.name ?? "不明な科目",

@@ -1,26 +1,25 @@
 import type {
   Card,
   LectureCardPhase,
+  LectureCheckQueueItem,
   LectureTrainingQueueResult,
 } from "../types/schema";
 import {
   SYSTEM_CONSTANTS,
   isWaitingCardLocked,
   graduateCardToCommonPool,
-  demoteCardToLecturePool,
 } from "../types/schema";
 import { createGraduatedFsrsCard } from "../services/fsrsService";
 
 /**
- * 講義専用プールの通常特訓モードで出題すべきカード一覧を抽出する純粋関数
+ * 講義専用プールの「チェック」モードで出題すべきカード一覧を抽出する純粋関数
  *
- * 抽出ルール:
- * 1. 当該講義（lectureId）に所属
- * 2. 休止フラグ（isSuspended）が false
- * 3. 以下のいずれか:
- *    - UNMEMORIZED（未暗記カード）
- *    - WAITING（待機カード）かつ ロック時間（デフォルト8h）が経過済み
- * ※ ACTIVE（卒業カード）および ロック中のWAITINGカードは除外される
+ * 抽出ルール（対象: 休止中でなく、まだ「卒業済(GRADUATED)」ではないカード）:
+ * - 区分3 (PRIORITY_3_COOLDOWN_CLEARED): 連続1回以上正解かつ未暗記（未卒業 / 卒業推奨）かつ前回の取り組み（lastAttemptAt）から規定時間（デフォルト8h）経過
+ * - 区分2 (PRIORITY_2_UNATTEMPTED): 未実施（過去に一回も取り組んでいない）
+ * - 区分1 (PRIORITY_1_ZERO_STREAK): 連続正解0の未暗記（未卒業）
+ *
+ * 出題優先度: 3 > 2 > 1
  */
 export function buildLectureTrainingQueue(
   allCards: Card[],
@@ -32,25 +31,37 @@ export function buildLectureTrainingQueue(
     (c) => c.lectureId === lectureId && !c.isSuspended,
   );
 
-  const trainingCards: Card[] = [];
-  let unmemorizedCount = 0;
-  let unlockedWaitingCount = 0;
+  const bucket3: LectureCheckQueueItem[] = [];
+  const bucket2: LectureCheckQueueItem[] = [];
+  const bucket1: LectureCheckQueueItem[] = [];
+
   let lockedWaitingCount = 0;
   let earliestUnlockAt: string | null = null;
 
   for (const card of lectureCards) {
-    const phase = card.lecturePool.phase;
+    const { phase, consecutiveCorrect, lastAttemptAt } = card.lecturePool;
 
-    if (phase === "UNMEMORIZED") {
-      trainingCards.push(card);
-      unmemorizedCount++;
-    } else if (phase === "WAITING") {
+    // 卒業済（共通プール移動済み）はチェック出題の対象外
+    if (phase === "GRADUATED") {
+      continue;
+    }
+
+    // 区分2: 未実施（過去に一回も取り組んでいない）
+    if (phase === "UNATTEMPTED") {
+      bucket2.push({
+        card,
+        checkCategory: "PRIORITY_2_UNATTEMPTED",
+      });
+      continue;
+    }
+
+    // 区分3 または 待機ロック中: 連続1回以上正解している未暗記（未卒業 / 卒業推奨）
+    if (consecutiveCorrect >= 1) {
       const locked = isWaitingCardLocked(card, waitingHours, now);
-
       if (locked) {
         lockedWaitingCount++;
-        if (card.lecturePool.lastCorrectAt) {
-          const unlockTime = new Date(card.lecturePool.lastCorrectAt);
+        if (lastAttemptAt) {
+          const unlockTime = new Date(lastAttemptAt);
           unlockTime.setHours(unlockTime.getHours() + waitingHours);
           const unlockIso = unlockTime.toISOString();
           if (!earliestUnlockAt || unlockIso < earliestUnlockAt) {
@@ -58,26 +69,38 @@ export function buildLectureTrainingQueue(
           }
         }
       } else {
-        // 待機ロック解除済みカード（卒業テストの対象）
-        trainingCards.push(card);
-        unlockedWaitingCount++;
+        bucket3.push({
+          card,
+          checkCategory: "PRIORITY_3_COOLDOWN_CLEARED",
+        });
       }
+      continue;
     }
-    // phase === 'ACTIVE' は講義特訓の対象外
+
+    // 区分1: 連続正解0の未暗記（未卒業）
+    bucket1.push({
+      card,
+      checkCategory: "PRIORITY_1_ZERO_STREAK",
+    });
   }
+
+  // 出題優先度: 3 > 2 > 1
+  const orderedItems = [...bucket3, ...bucket2, ...bucket1];
 
   return {
     lectureId,
-    cards: trainingCards,
-    unmemorizedCount,
-    unlockedWaitingCount,
+    cards: orderedItems.map((i) => i.card),
+    items: orderedItems,
+    priority3Count: bucket3.length,
+    priority2Count: bucket2.length,
+    priority1Count: bucket1.length,
     lockedWaitingCount,
     earliestUnlockAt,
   };
 }
 
 /**
- * カードを共通プール（ACTIVE）へ卒業させる（2回連続正解 または 個別スキップ移動）
+ * カードを共通プール（GRADUATED: 卒業済）へ移動させる
  * バックグラウンドで Rating.Good を実行し、lastReviewedAt = now, due = 翌日以降をセット
  */
 export function promoteCardToGraduate(
@@ -86,16 +109,20 @@ export function promoteCardToGraduate(
   requestRetention: number = SYSTEM_CONSTANTS.TARGET_RETENTION,
   cutoffHour: number = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
 ): Card {
-  const { fsrsCard } = createGraduatedFsrsCard(now, requestRetention, cutoffHour);
+  const { fsrsCard } = createGraduatedFsrsCard(
+    now,
+    requestRetention,
+    cutoffHour,
+  );
   const graduated = graduateCardToCommonPool(card, fsrsCard);
   const nowIso = now.toISOString();
 
   return {
     ...graduated,
     lecturePool: {
-      phase: "ACTIVE",
-      consecutiveCorrect: 2,
-      lastCorrectAt: nowIso,
+      phase: "GRADUATED",
+      consecutiveCorrect: Math.max(card.lecturePool.consecutiveCorrect, 2),
+      lastAttemptAt: card.lecturePool.lastAttemptAt ?? nowIso,
     },
     commonPool: {
       fsrs: fsrsCard,
@@ -110,70 +137,64 @@ export interface LectureTrainingTransitionResult {
   updatedCard: Card;
   previousPhase: LectureCardPhase;
   nextPhase: LectureCardPhase;
-  graduated: boolean;
+  becameGraduationRecommended: boolean;
 }
 
 /**
- * 講義特訓モードでの1問回答（〇: correct / ×: incorrect）による3段階状態遷移
+ * 講義「チェック」モードでの1問回答（〇: correct / ×: incorrect）による状態遷移
+ * - 正解でも不正解でも lastAttemptAt = 現在時刻 に更新
+ * - 正解（〇）: consecutiveCorrect を +1 加算。1なら UNGRADUATED（未卒業）、2以上なら GRADUATION_RECOMMENDED（卒業推奨）
+ * - 不正解（×）: consecutiveCorrect = 0、phase = UNGRADUATED（未卒業）へ戻す（一度取り組んだので未実施には戻らない）
  */
 export function applyLectureTrainingAnswer(
   card: Card,
   result: "correct" | "incorrect",
   now: Date = new Date(),
-  requestRetention: number = SYSTEM_CONSTANTS.TARGET_RETENTION,
-  cutoffHour: number = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
 ): LectureTrainingTransitionResult {
   const previousPhase = card.lecturePool.phase;
   const nowIso = now.toISOString();
 
-  // 不正解（×）の場合: 未暗記（UNMEMORIZED）へ逆戻り（consecutiveCorrect = 0 にリセット）
   if (result === "incorrect") {
-    const demoted = demoteCardToLecturePool(card);
-    return {
-      updatedCard: {
-        ...demoted,
-        updatedAt: nowIso,
+    const nextPhase: LectureCardPhase = "UNGRADUATED";
+    const updatedCard: Card = {
+      ...card,
+      lecturePool: {
+        phase: nextPhase,
+        consecutiveCorrect: 0,
+        lastAttemptAt: nowIso,
       },
-      previousPhase,
-      nextPhase: "UNMEMORIZED",
-      graduated: false,
+      commonPool: null,
+      updatedAt: nowIso,
     };
-  }
 
-  // 正解（〇）の場合:
-  // 1. 現在 WAITING（待機解除後の2回目テスト）または ACTIVE なら卒業（ACTIVE）へ昇格
-  if (previousPhase === "WAITING" || previousPhase === "ACTIVE") {
-    const graduatedCard = promoteCardToGraduate(
-      card,
-      now,
-      requestRetention,
-      cutoffHour,
-    );
     return {
-      updatedCard: graduatedCard,
+      updatedCard,
       previousPhase,
-      nextPhase: "ACTIVE",
-      graduated: true,
+      nextPhase,
+      becameGraduationRecommended: false,
     };
   }
 
-  // 2. 現在 UNMEMORIZED（1回目正解）なら WAITING（待機中: 8hロック）へ移行
-  const waitingCard: Card = {
+  // 正解（〇）の場合
+  const nextConsecutive = card.lecturePool.consecutiveCorrect + 1;
+  const nextPhase: LectureCardPhase =
+    nextConsecutive >= 2 ? "GRADUATION_RECOMMENDED" : "UNGRADUATED";
+
+  const updatedCard: Card = {
     ...card,
     lecturePool: {
-      phase: "WAITING",
-      consecutiveCorrect: 1,
-      lastCorrectAt: nowIso,
+      phase: nextPhase,
+      consecutiveCorrect: nextConsecutive,
+      lastAttemptAt: nowIso,
     },
     commonPool: null,
     updatedAt: nowIso,
   };
 
   return {
-    updatedCard: waitingCard,
+    updatedCard,
     previousPhase,
-    nextPhase: "WAITING",
-    graduated: false,
+    nextPhase,
+    becameGraduationRecommended: nextPhase === "GRADUATION_RECOMMENDED",
   };
 }
-

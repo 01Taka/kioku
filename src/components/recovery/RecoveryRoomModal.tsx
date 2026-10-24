@@ -144,7 +144,7 @@ export function RecoveryRoomModal({ onClose }: RecoveryRoomModalProps) {
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              長期間放置されて記憶維持率（R）が35%未満に低下したカードは、日々の復習がパンクするのを防ぐためここに自動隔離されます。
+              長期間放置されて記憶維持率（R）が35%未満に低下したカードです。日常復習を圧迫する場合は、ここでワンタップで所属講義のプールへ戻して再特訓できます。
             </p>
           </div>
           <button

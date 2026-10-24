@@ -8,6 +8,7 @@ import { XIcon, PlayIcon, UndoIcon } from "../icons";
 
 export interface CommonPoolSessionModalProps {
   onClose: () => void;
+  onOpenRecoveryRoom?: () => void;
 }
 
 type SlideAnimationState =
@@ -16,12 +17,18 @@ type SlideAnimationState =
   | "prepare-bottom"
   | "slide-in";
 
-export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps) {
+export function CommonPoolSessionModal({
+  onClose,
+  onOpenRecoveryRoom,
+}: CommonPoolSessionModalProps) {
   const {
     getCommonPoolQueue,
     answerCommonPoolCard,
     batchDemoteToLecturePool,
   } = useAppStore();
+
+  // リカバリー対象（R < 0.35）のカード数
+  const [recoveryCount, setRecoveryCount] = useState(0);
 
   // セッション開始時点の10問バッチスナップショット
   const [batchItems, setBatchItems] = useState<CommonPoolQueueItem[]>([]);
@@ -44,6 +51,7 @@ export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps)
     setBatchItems(queueResult.sessionBatch);
     setEarlyCount(queueResult.earlyReviewCountInBatch);
     setFarthestEarlyDueIso(queueResult.farthestEarlyDueIso);
+    setRecoveryCount(queueResult.recoveryCards.length);
     setCurrentIndex(0);
     setIsFlipped(false);
     setIsBreakScreen(false);
@@ -410,6 +418,29 @@ export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps)
           ⚡ 本セッションには、最長で【{futureNotice.dateLabel}（あと
           {futureNotice.daysAhead}日後）】に復習予定の先取りカードが {earlyCount}{" "}
           枚含まれます
+        </div>
+      )}
+
+      {/* リカバリー対象（記憶維持率 R < 35%）カードが存在する場合の警告・ワンタップ整理案内バナー */}
+      {recoveryCount > 0 && onOpenRecoveryRoom && (
+        <div className="bg-rose-950/70 border-b border-rose-800/60 px-4 py-2 flex items-center justify-between text-xs text-rose-200">
+          <div className="flex items-center space-x-2">
+            <span>⚠️</span>
+            <span>
+              長期間未復習で記憶が薄れているカードが <strong>{recoveryCount} 枚</strong> あります。
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onOpenRecoveryRoom();
+            }}
+            className="px-2.5 py-1 rounded-md bg-rose-800 hover:bg-rose-700 text-white font-medium text-[11px] flex items-center space-x-1 transition cursor-pointer"
+            title="リカバリー室を開いて講義プールへ戻す等の整理を行う"
+          >
+            <span>🏥 リカバリー室で整理する</span>
+          </button>
         </div>
       )}
 

@@ -50,6 +50,7 @@ export default function App() {
       {isCommonSessionOpen && (
         <CommonPoolSessionModal
           onClose={() => setIsCommonSessionOpen(false)}
+          onOpenRecoveryRoom={() => setIsRecoveryRoomOpen(true)}
         />
       )}
 

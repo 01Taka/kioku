@@ -216,7 +216,8 @@ export function buildCommonPoolQueue(params: {
       continue;
     }
 
-    // 5. Task 5-1: R < 0.35 の瀕死カードはリカバリー室へ自動トリアージ・隔離（日常キューから除外）
+    // 5. 想起確率 R < 0.35 の危険水域カードをリカバリー対象としてリストアップ
+    // ※ ユーザーが明示的にリカバリー室で取り除く（講義プールへ戻す）まで共通プールからは自動除外せず、通常通り出題キューにも含める
     if (retrievability < SYSTEM_CONSTANTS.RECOVERY_RETRIEVABILITY_THRESHOLD) {
       recoveryCards.push({
         card,
@@ -224,7 +225,6 @@ export function buildCommonPoolQueue(params: {
         lectureName,
         retrievability,
       });
-      continue;
     }
 
     const queueItem: CommonPoolQueueItem = {

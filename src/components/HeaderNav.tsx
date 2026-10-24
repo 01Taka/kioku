@@ -144,7 +144,7 @@ export function HeaderNav({
           )}
         </button>
 
-        {/* 3. リカバリー室（R < 0.35 隔離アラート） */}
+        {/* 3. リカバリー室（R < 0.35 救済アラート） */}
         <button
           type="button"
           onClick={onOpenRecoveryRoom}
@@ -153,7 +153,7 @@ export function HeaderNav({
               ? "bg-rose-950/60 hover:bg-rose-900/70 text-rose-200 border-rose-700/70 animate-pulse"
               : "bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700/60"
           }`}
-          title="想起確率 R < 35% に低下したカードの隔離・救済トリアージ室"
+          title="想起確率 R < 35% に低下したカードの救済トリアージ室（放置カードの一括整理）"
         >
           <span>🏥 リカバリー室</span>
           {recoveryCount > 0 && (

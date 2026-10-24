@@ -422,7 +422,7 @@ export function Sidebar() {
 
                         <span
                           className="text-[10px] text-slate-400 font-mono pl-0.5"
-                          title={`卒業率: ${progress.activeCount} / ${progress.totalCards}枚`}
+                          title={`卒業率: ${progress.graduatedCount} / ${progress.totalCards}枚`}
                         >
                           {progress.graduatedPercentage}%
                         </span>

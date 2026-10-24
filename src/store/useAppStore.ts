@@ -879,6 +879,7 @@ export const useAppStore = create<AppState>()(
 
         return {
           lectureId,
+          totalCards: cards.length,
           unattemptedCount,
           ungraduatedCount,
           graduationRecommendedCount,
@@ -894,7 +895,10 @@ export const useAppStore = create<AppState>()(
         const state = get();
         const cards = state.cards.filter((c) => c.courseId === courseId);
         const totalCards = cards.length;
-        let activeCount = 0;
+        let unattemptedCount = 0;
+        let ungraduatedCount = 0;
+        let graduationRecommendedCount = 0;
+        let graduatedCount = 0;
         let retryCount = 0;
         let dueCount = 0;
 
@@ -904,8 +908,15 @@ export const useAppStore = create<AppState>()(
         const retrySet = new Set(state.sessionState.retryCardIds);
 
         for (const card of cards) {
-          if (card.lecturePool.phase === "GRADUATED") {
-            activeCount++;
+          const phase = card.lecturePool.phase;
+          if (phase === "UNATTEMPTED") {
+            unattemptedCount++;
+          } else if (phase === "UNGRADUATED") {
+            ungraduatedCount++;
+          } else if (phase === "GRADUATION_RECOMMENDED") {
+            graduationRecommendedCount++;
+          } else if (phase === "GRADUATED") {
+            graduatedCount++;
             if (
               !card.isSuspended &&
               card.commonPool &&
@@ -921,12 +932,15 @@ export const useAppStore = create<AppState>()(
         }
 
         const graduatedPercentage =
-          totalCards === 0 ? 0 : Math.round((activeCount / totalCards) * 100);
+          totalCards === 0 ? 0 : Math.round((graduatedCount / totalCards) * 100);
 
         return {
           courseId,
           totalCards,
-          activeCount,
+          unattemptedCount,
+          ungraduatedCount,
+          graduationRecommendedCount,
+          graduatedCount,
           graduatedPercentage,
           retryCount,
           dueCount,

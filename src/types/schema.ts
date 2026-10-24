@@ -227,6 +227,7 @@ export interface AppBackupData {
 /** 講義回ごとの状況 */
 export interface LectureProgress {
   lectureId: string;
+  totalCards: number;
   unattemptedCount: number; // 未実施（過去に一回も取り組んでいない）
   ungraduatedCount: number; // 未卒業（取り組んだことがあるがまだ卒業していない）
   graduationRecommendedCount: number; // 卒業推奨（現在2回以上連続で正解している）
@@ -261,8 +262,11 @@ export interface LectureTrainingQueueResult {
 export interface CourseProgress {
   courseId: string;
   totalCards: number;
-  activeCount: number;
-  graduatedPercentage: number; // ACTIVEの割合（0〜100%）
+  unattemptedCount: number;
+  ungraduatedCount: number;
+  graduationRecommendedCount: number;
+  graduatedCount: number;
+  graduatedPercentage: number; // 卒業済の割合（0〜100%）
   retryCount: number; // 科目内のリベンジ合計
   dueCount: number; // 科目内の期日合計
 }

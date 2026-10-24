@@ -163,14 +163,14 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="flex items-center justify-between gap-1.5">
                     {/* 所属パンくず */}
-                    <span className="truncate text-[11px] font-medium text-indigo-300">
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-indigo-300">
                       {courseName} &gt; {lectureName}
                     </span>
 
                     {/* 連続ミス回数バッジ */}
-                    <div className="flex items-center space-x-1.5">
+                    <div className="flex shrink-0 items-center space-x-1.5">
                       {consecutiveFailCount >= 3 ? (
                         <span className="rounded-full border border-rose-700/70 bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-300">
                           🔥 {consecutiveFailCount}連続ミス (降格推奨)

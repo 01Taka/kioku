@@ -243,13 +243,13 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
                     key={card.id}
                     className="space-y-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-3.5 transition hover:border-slate-700"
                   >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-medium text-indigo-300">
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="min-w-0 truncate font-medium text-indigo-300">
                         📚 {courseMap.get(card.courseId) || "科目"} &gt;{" "}
                         {lectureMap.get(card.lectureId) || "講義"}
                       </span>
                       {card.commonPool?.consecutiveFailCount ? (
-                        <span className="rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-300">
+                        <span className="shrink-0 rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-300">
                           ⚠️ {card.commonPool.consecutiveFailCount}連続ミス
                         </span>
                       ) : null}
@@ -348,11 +348,11 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
                       />
 
                       <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-medium text-indigo-300">
+                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                          <span className="min-w-0 truncate font-medium text-indigo-300">
                             📚 {courseName} &gt; {lectureName}
                           </span>
-                          <span className="font-mono font-bold text-rose-400">
+                          <span className="shrink-0 font-mono font-bold text-rose-400">
                             維持率 R: {Math.round(retrievability * 100)}%
                           </span>
                         </div>

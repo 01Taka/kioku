@@ -60,17 +60,17 @@ export function LectureEditView({
   return (
     <div className="space-y-5">
       {/* 戻るボタン & 講義名 */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
         <button
           type="button"
           onClick={onBack}
-          className="flex cursor-pointer items-center space-x-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300"
+          className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+          title="講義リストへ戻る"
         >
-          <ArrowLeftIcon size={14} />
-          <span>講義リストへ戻る</span>
+          <ArrowLeftIcon size={16} />
         </button>
 
-        <h2 className="text-sm font-bold text-white">
+        <h2 className="truncate text-sm font-bold text-white">
           講義の編集: {lectureName} ({lectureCards.length}枚)
         </h2>
       </div>

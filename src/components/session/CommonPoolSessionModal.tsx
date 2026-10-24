@@ -16,12 +16,9 @@ type SlideAnimationState = "idle" | "slide-out-up" | "prepare-bottom" | "slide-i
 
 export function CommonPoolSessionModal({
   onClose,
-  onOpenRecoveryRoom,
+  onOpenRecoveryRoom: _onOpenRecoveryRoom,
 }: CommonPoolSessionModalProps) {
   const { getCommonPoolQueue, answerCommonPoolCard, batchDemoteToLecturePool } = useAppStore();
-
-  // リカバリー対象（R < 0.35）のカード数
-  const [recoveryCount, setRecoveryCount] = useState(0);
 
   // セッション開始時点の10問バッチスナップショット
   const [batchItems, setBatchItems] = useState<CommonPoolQueueItem[]>([]);
@@ -45,7 +42,6 @@ export function CommonPoolSessionModal({
     setBatchItems(queueResult.sessionBatch);
     setEarlyCount(queueResult.earlyReviewCountInBatch);
     setFarthestEarlyDueIso(queueResult.farthestEarlyDueIso);
-    setRecoveryCount(queueResult.recoveryCards.length);
     setCurrentIndex(0);
     setIsFlipped(false);
     setIsBreakScreen(false);
@@ -380,37 +376,14 @@ export function CommonPoolSessionModal({
         </div>
       )}
 
-      {/* リカバリー対象（記憶維持率 R < 35%）カードが存在する場合の警告・ワンタップ整理案内バナー */}
-      {recoveryCount > 0 && onOpenRecoveryRoom && (
-        <div className="flex items-center justify-between border-b border-rose-800/60 bg-rose-950/70 px-4 py-2 text-xs text-rose-200">
-          <div className="flex items-center space-x-2">
-            <span>⚠️</span>
-            <span>
-              長期間未復習で記憶が薄れているカードが <strong>{recoveryCount} 枚</strong> あります。
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onOpenRecoveryRoom();
-            }}
-            className="flex cursor-pointer items-center space-x-1 rounded-md bg-rose-800 px-2.5 py-1 text-[11px] font-medium text-white transition hover:bg-rose-700"
-            title="リカバリー室を開いて講義プールへ戻す等の整理を行う"
-          >
-            <span>🏥 リカバリー室で整理する</span>
-          </button>
-        </div>
-      )}
-
       {/* メインカード領域 */}
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center p-4 sm:p-6">
         {/* 所属パンくず & 推定想起確率 */}
-        <div className="mb-3 flex w-full items-center justify-between text-xs">
-          <span className="max-w-md truncate font-medium text-indigo-300">
+        <div className="mb-3 flex w-full items-center justify-between gap-2 text-xs">
+          <span className="min-w-0 truncate font-medium text-indigo-300">
             📚 {currentItem.courseName} &gt; {currentItem.lectureName}
           </span>
-          <span className="font-mono text-[11px] text-slate-400">
+          <span className="shrink-0 font-mono text-[11px] text-slate-400">
             記憶維持率 R: {Math.round(currentItem.retrievability * 100)}%
           </span>
         </div>

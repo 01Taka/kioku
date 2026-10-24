@@ -246,11 +246,11 @@ export function RecoveryRoomModal({ onClose }: RecoveryRoomModalProps) {
                     </div>
 
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="truncate text-xs font-medium text-indigo-300">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-indigo-300">
                           📚 {courseName} &gt; {lectureName}
                         </span>
-                        <span className="rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 font-mono text-[11px] font-bold text-rose-300">
+                        <span className="shrink-0 rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 font-mono text-[11px] font-bold text-rose-300">
                           推定想起確率 R: {rPercent}%
                         </span>
                       </div>

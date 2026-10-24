@@ -156,14 +156,9 @@ export function PracticeResultView({
           {hasGraduation && graduationCards && (
             <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xs font-bold text-emerald-400">
-                    卒業（{selectedGraduationCount}）
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    タップして共通プールへ移動するか選択できます（デフォルト全選択）
-                  </p>
-                </div>
+                <h3 className="text-xs font-bold text-emerald-400">
+                  卒業（{selectedGraduationCount}）
+                </h3>
 
                 {onToggleGraduationId && (
                   <button

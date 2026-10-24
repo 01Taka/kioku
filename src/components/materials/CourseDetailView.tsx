@@ -81,8 +81,6 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     );
   }, [selectedCheckLectureId, getLectureTrainingQueue, settings.waitingDurationHours, nowTick]);
 
-  const selectedCheckLecture = courseLectures.find((l) => l.id === selectedCheckLectureId);
-
   // 指定した講義IDのチェック演習を開始する（最大10問）
   const startCheckSessionForLecture = useCallback(
     (lectureId: string) => {
@@ -344,7 +342,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
       {activeTab === "CHECK" && (
         <div className="flex flex-1 flex-col space-y-4 overflow-hidden">
           {/* リストの上、タブの下に「はじめる」ボタンを配置 */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-start">
             <button
               type="button"
               onClick={handleStartCheck}
@@ -354,12 +352,6 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
               <PlayIcon size={14} />
               <span>チェックをはじめる ({checkTrainingQueue?.items.length ?? 0}枚)</span>
             </button>
-
-            {selectedCheckLecture && (
-              <span className="text-xs font-medium text-indigo-300">
-                選択中: <strong>{selectedCheckLecture.name}</strong>
-              </span>
-            )}
           </div>
 
           {/* 講義リストをクリックして一つだけ選択 */}

@@ -120,21 +120,15 @@ export function RecoveryRoomModal({ onClose }: RecoveryRoomModalProps) {
     <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-3xl flex-col space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
         {/* ヘッダー */}
-        <div className="flex items-start justify-between border-b border-slate-800 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl">🏥</span>
-              <h2 className="text-base font-bold text-white">
-                リカバリー室（想起確率 R &lt; 35% 救済トリアージ）
-              </h2>
-              <span className="rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">
-                {recoveryCards.length} 枚
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              長期間放置されて記憶維持率（R）が35%未満に低下したカードです。日常復習を圧迫する場合は、ここでワンタップで所属講義のプールへ戻して再特訓できます。
-            </p>
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-xl">🏥</span>
+            <h2 className="text-base font-bold text-white">リカバリー室</h2>
+            <span className="rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 font-mono text-xs text-rose-300">
+              {recoveryCards.length} 枚
+            </span>
           </div>
+
           <button
             onClick={onClose}
             className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"

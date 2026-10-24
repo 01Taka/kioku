@@ -25,16 +25,11 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-1 flex-col overflow-hidden bg-slate-950 p-4 select-none sm:p-6">
       {/* 上部ヘッダー & 科目追加ボタン */}
-      <div className="mb-5 flex items-center justify-between border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="flex items-center space-x-2 text-base font-bold text-white">
-            <BookOpenIcon size={18} className="text-indigo-400" />
-            <span>教材一覧（科目リスト）</span>
-          </h1>
-          <p className="mt-0.5 text-xs text-slate-400">
-            科目を選択して、講義ごとのチェック・復習・編集を行います。
-          </p>
-        </div>
+      <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
+        <h1 className="flex items-center space-x-2 text-base font-bold text-white">
+          <BookOpenIcon size={18} className="text-indigo-400" />
+          <span>教材一覧</span>
+        </h1>
 
         <button
           type="button"

@@ -40,49 +40,43 @@ export function HomeMainStartModal({ onClose, onStartSession }: HomeMainStartMod
 
         {/* 1. 上部: 今回出題の問題内訳（オレンジ・グリーン・パープル） */}
         <div className="space-y-2">
-          <span className="text-xs font-semibold text-slate-300">今回出題の問題内訳:</span>
+          <span className="text-xs font-semibold text-slate-300">出題の内訳</span>
           <div className="grid grid-cols-3 gap-2.5">
-            <div className="rounded-xl border border-amber-800/60 bg-amber-950/40 p-3 text-center">
-              <span className="block text-[11px] font-semibold text-amber-300">🔁 リベンジ枠</span>
-              <strong className="mt-1 block font-mono text-xl font-bold text-amber-200">
+            <div className="rounded-xl border border-amber-800/60 bg-amber-950/40 p-2.5 text-center">
+              <span className="block text-[11px] font-semibold text-amber-300">🔁 リベンジ</span>
+              <strong className="mt-0.5 block font-mono text-xl font-bold text-amber-200">
                 {retryCount}
               </strong>
-              <span className="text-[10px] text-amber-400/80">昨日ミスした問題</span>
             </div>
 
-            <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/40 p-3 text-center">
-              <span className="block text-[11px] font-semibold text-emerald-300">
-                🎯 期日・最適枠
-              </span>
-              <strong className="mt-1 block font-mono text-xl font-bold text-emerald-200">
+            <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/40 p-2.5 text-center">
+              <span className="block text-[11px] font-semibold text-emerald-300">🎯 本日期日</span>
+              <strong className="mt-0.5 block font-mono text-xl font-bold text-emerald-200">
                 {dueCount}
               </strong>
-              <span className="text-[10px] text-emerald-400/80">本日復習すべき問題</span>
             </div>
 
-            <div className="rounded-xl border border-purple-800/60 bg-purple-950/40 p-3 text-center">
-              <span className="block text-[11px] font-semibold text-purple-300">⚡ 先取り枠</span>
-              <strong className="mt-1 block font-mono text-xl font-bold text-purple-200">
+            <div className="rounded-xl border border-purple-800/60 bg-purple-950/40 p-2.5 text-center">
+              <span className="block text-[11px] font-semibold text-purple-300">⚡ 先取り</span>
+              <strong className="mt-0.5 block font-mono text-xl font-bold text-purple-200">
                 {earlyCount}
               </strong>
-              <span className="text-[10px] text-purple-400/80">未来の期日カード</span>
             </div>
           </div>
           <p className="pt-1 text-center font-mono text-[11px] text-slate-400">
-            合計出題待ち: <strong>{queueResult.totalRemainingCount}</strong> 枚 （1回につき
-            10問マイクロセッション）
+            合計出題待ち: <strong>{queueResult.totalRemainingCount}</strong> 枚
           </p>
         </div>
 
         {/* 2. 中部: 詳細設定ボタン */}
-        <div className="pt-1">
+        <div>
           <button
             type="button"
             onClick={() => setIsDetailSettingsOpen(true)}
             className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl border border-slate-700/80 bg-slate-800/80 px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
           >
             <SlidersIcon size={14} />
-            <span>詳細設定（出題順ソート・教材の優先順位）</span>
+            <span>詳細設定</span>
           </button>
         </div>
 

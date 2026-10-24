@@ -408,7 +408,6 @@ export function LecturePlayer({
               <span className="text-xs font-semibold text-slate-300">
                 間違えた問題一覧 ({incorrectCards.length}問)
               </span>
-              <span className="text-[11px] text-slate-400">間違えた問題のみを復習できます</span>
             </div>
 
             <div className="space-y-2.5">

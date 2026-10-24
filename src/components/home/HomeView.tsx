@@ -194,7 +194,7 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
         {/* 1. ホーム / メイン */}
         {/* ======================================================== */}
         {activeSubTab === "MAIN" && (
-          <div className="space-y-6">
+          <div>
             {/* 画面上部: 「はじめる」ボタンのみ */}
             <div className="flex justify-start">
               <button
@@ -205,17 +205,6 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
                 <PlayIcon size={16} />
                 <span>はじめる</span>
               </button>
-            </div>
-
-            {/* 将来のマイルストーン・モチベ用スペース */}
-            <div className="space-y-2 rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-8 text-center">
-              <span className="text-2xl">🌱</span>
-              <p className="text-xs font-medium text-slate-400">
-                継続学習マイルストーンエリア（今後機能拡張予定）
-              </p>
-              <p className="mx-auto max-w-md text-[11px] text-slate-500">
-                「はじめる」ボタンを押して、今日の共通復習（10問マイクロセッション）をスタートしましょう。
-              </p>
             </div>
           </div>
         )}

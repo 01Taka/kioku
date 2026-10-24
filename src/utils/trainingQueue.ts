@@ -1,15 +1,11 @@
+import { createGraduatedFsrsCard } from "../services/fsrsService";
 import type {
   Card,
   LectureCardPhase,
   LectureCheckQueueItem,
   LectureTrainingQueueResult,
 } from "../types/schema";
-import {
-  SYSTEM_CONSTANTS,
-  isWaitingCardLocked,
-  graduateCardToCommonPool,
-} from "../types/schema";
-import { createGraduatedFsrsCard } from "../services/fsrsService";
+import { graduateCardToCommonPool,isWaitingCardLocked, SYSTEM_CONSTANTS } from "../types/schema";
 
 /**
  * 講義専用プールの「チェック」モードで出題すべきカード一覧を抽出する純粋関数
@@ -27,9 +23,7 @@ export function buildLectureTrainingQueue(
   waitingHours: number = SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
   now: Date = new Date(),
 ): LectureTrainingQueueResult {
-  const lectureCards = allCards.filter(
-    (c) => c.lectureId === lectureId && !c.isSuspended,
-  );
+  const lectureCards = allCards.filter((c) => c.lectureId === lectureId && !c.isSuspended);
 
   const bucket3: LectureCheckQueueItem[] = [];
   const bucket2: LectureCheckQueueItem[] = [];
@@ -109,11 +103,7 @@ export function promoteCardToGraduate(
   requestRetention: number = SYSTEM_CONSTANTS.TARGET_RETENTION,
   cutoffHour: number = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
 ): Card {
-  const { fsrsCard } = createGraduatedFsrsCard(
-    now,
-    requestRetention,
-    cutoffHour,
-  );
+  const { fsrsCard } = createGraduatedFsrsCard(now, requestRetention, cutoffHour);
   const graduated = graduateCardToCommonPool(card, fsrsCard);
   const nowIso = now.toISOString();
 

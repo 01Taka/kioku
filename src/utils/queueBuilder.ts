@@ -1,14 +1,14 @@
+import { calculateCardRetrievability } from "../services/fsrsService";
 import type {
+  AppSettings,
   Card,
   Course,
   Lecture,
   PriorityMode,
   ReviewCategory,
-  AppSettings,
 } from "../types/schema";
 import { SYSTEM_CONSTANTS } from "../types/schema";
 import { getCutoffTime, getNextCutoffTime, isReviewedToday } from "./dateUtils";
-import { calculateCardRetrievability } from "../services/fsrsService";
 
 export interface CommonPoolQueueItem {
   card: Card;
@@ -172,13 +172,7 @@ export function buildCommonPoolQueue(params: {
     }
 
     // 2. Task 2-2: 当日04:00以降に回答済み（または本日卒業した）カードは100%除外
-    if (
-      isReviewedToday(
-        card.commonPool.lastReviewedAt,
-        now,
-        settings.dayCutoffHour,
-      )
-    ) {
+    if (isReviewedToday(card.commonPool.lastReviewedAt, now, settings.dayCutoffHour)) {
       continue;
     }
 
@@ -265,7 +259,6 @@ export function buildCommonPoolQueue(params: {
 
   // 10問マイクロセッションの構築
   const sessionBatch: CommonPoolQueueItem[] = allTargetCards.slice(0, batchSize);
-  let earlyReviewCountInBatch = 0;
   let farthestEarlyDueIso: string | null = null;
 
   // ④ 先取り（EARLY / パープル）補充:
@@ -283,7 +276,7 @@ export function buildCommonPoolQueue(params: {
 
   // バッチ内のパープル（EARLY）カードの最長 due を集計（FORCE内にEARLYが含まれる場合も考慮）
   const earlyItemsInBatch = sessionBatch.filter((i) => i.reviewCategory === "EARLY");
-  earlyReviewCountInBatch = earlyItemsInBatch.length;
+  const earlyReviewCountInBatch = earlyItemsInBatch.length;
   if (earlyItemsInBatch.length > 0) {
     let maxDueMs = 0;
     for (const item of earlyItemsInBatch) {

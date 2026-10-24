@@ -1,46 +1,40 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+
+import { reviewCommonPoolCard } from "../services/fsrsService";
 import type {
-  Course,
-  Lecture,
-  Card,
-  PriorityMode,
-  LectureCardPhase,
-  LectureProgress,
-  CourseProgress,
-  FlashcardContent,
-  LectureTrainingQueueResult,
-  AppSettings,
-  SessionStorageState,
   ActiveRating,
   AppBackupData,
+  AppSettings,
+  Card,
+  Course,
+  CourseProgress,
+  FlashcardContent,
+  Lecture,
+  LectureCardPhase,
+  LectureProgress,
+  LectureTrainingQueueResult,
+  PriorityMode,
+  SessionStorageState,
 } from "../types/schema";
 import {
   createNewCard,
   demoteCardToLecturePool,
-  resetCardToUnattempted,
-  normalizeLecturePoolState,
   getSuspensionStatus,
-  isWaitingCardLocked,
   importBackupData,
+  isWaitingCardLocked,
+  normalizeLecturePoolState,
+  resetCardToUnattempted,
   SYSTEM_CONSTANTS,
 } from "../types/schema";
+import { getActiveDateKey, getNextCutoffTime, isReviewedToday } from "../utils/dateUtils";
+import { buildCommonPoolQueue, type CommonPoolQueueBuildResult } from "../utils/queueBuilder";
 import {
-  buildLectureTrainingQueue,
-  promoteCardToGraduate,
   applyLectureTrainingAnswer,
+  buildLectureTrainingQueue,
   type LectureTrainingTransitionResult,
+  promoteCardToGraduate,
 } from "../utils/trainingQueue";
-import {
-  getActiveDateKey,
-  getNextCutoffTime,
-  isReviewedToday,
-} from "../utils/dateUtils";
-import {
-  buildCommonPoolQueue,
-  type CommonPoolQueueBuildResult,
-} from "../utils/queueBuilder";
-import { reviewCommonPoolCard } from "../services/fsrsService";
 
 export function getBatchSignature(contents: FlashcardContent[]): string {
   return contents
@@ -88,10 +82,7 @@ interface AppState {
 
   // Course actions
   addCourse: (name: string, priorityMode?: PriorityMode) => Course;
-  updateCourse: (
-    id: string,
-    updates: Partial<Pick<Course, "name" | "priorityMode">>,
-  ) => void;
+  updateCourse: (id: string, updates: Partial<Pick<Course, "name" | "priorityMode">>) => void;
   deleteCourse: (id: string) => void;
   toggleCourseSuspension: (courseId: string) => void;
 
@@ -105,16 +96,8 @@ interface AppState {
   toggleLectureSuspension: (lectureId: string) => void;
 
   // Card actions
-  addCard: (
-    courseId: string,
-    lectureId: string,
-    front: string,
-    back: string,
-  ) => Card;
-  updateCard: (
-    id: string,
-    updates: Partial<Pick<Card, "front" | "back" | "isSuspended">>,
-  ) => void;
+  addCard: (courseId: string, lectureId: string, front: string, back: string) => Card;
+  updateCard: (id: string, updates: Partial<Pick<Card, "front" | "back" | "isSuspended">>) => void;
   deleteCard: (id: string) => void;
   setCardPhase: (id: string, phase: LectureCardPhase) => void;
   toggleCardSuspension: (id: string) => void;
@@ -123,22 +106,12 @@ interface AppState {
     result: "correct" | "incorrect",
     now?: Date,
   ) => LectureTrainingTransitionResult | null;
-  graduateRecommendedCardsInLecture: (
-    lectureId: string,
-    now?: Date,
-  ) => number;
+  graduateRecommendedCardsInLecture: (lectureId: string, now?: Date) => number;
   batchGraduateCards: (cardIds: string[], now?: Date) => number;
 
   // Common Pool & Recovery Room actions
-  getCommonPoolQueue: (
-    now?: Date,
-    batchSize?: number,
-  ) => CommonPoolQueueBuildResult;
-  answerCommonPoolCard: (
-    cardId: string,
-    rating: ActiveRating,
-    now?: Date,
-  ) => void;
+  getCommonPoolQueue: (now?: Date, batchSize?: number) => CommonPoolQueueBuildResult;
+  answerCommonPoolCard: (cardId: string, rating: ActiveRating, now?: Date) => void;
   batchDemoteToLecturePool: (cardIds: string[]) => number;
   answerRecoveryTestCard: (
     cardId: string,
@@ -162,10 +135,7 @@ interface AppState {
     customBundleId?: string,
   ) => { bundleId: string; addedCards: Card[] };
   deleteCardsByBundleId: (bundleId: string) => number;
-  isDuplicateOfLastBatch: (
-    lectureId: string,
-    contents: FlashcardContent[],
-  ) => boolean;
+  isDuplicateOfLastBatch: (lectureId: string, contents: FlashcardContent[]) => boolean;
 
   // Navigation / Selection
   selectCourse: (courseId: string | null) => void;
@@ -243,9 +213,7 @@ export const useAppStore = create<AppState>()(
         const now = new Date().toISOString();
         set((state) => ({
           courses: state.courses.map((course) =>
-            course.id === id
-              ? { ...course, ...updates, updatedAt: now }
-              : course,
+            course.id === id ? { ...course, ...updates, updatedAt: now } : course,
           ),
         }));
       },
@@ -253,22 +221,19 @@ export const useAppStore = create<AppState>()(
       deleteCourse: (id) => {
         set((state) => {
           const remainingCourses = state.courses.filter((c) => c.id !== id);
-          const remainingLectures = state.lectures.filter(
-            (l) => l.courseId !== id,
-          );
+          const remainingLectures = state.lectures.filter((l) => l.courseId !== id);
           const remainingCards = state.cards.filter((c) => c.courseId !== id);
 
           const nextSelectedCourseId =
             state.selectedCourseId === id
-              ? remainingCourses[0]?.id ?? null
+              ? (remainingCourses[0]?.id ?? null)
               : state.selectedCourseId;
 
-          const nextSelectedLectureId =
-            remainingLectures.some((l) => l.id === state.selectedLectureId)
-              ? state.selectedLectureId
-              : remainingLectures.find(
-                  (l) => l.courseId === nextSelectedCourseId,
-                )?.id ?? null;
+          const nextSelectedLectureId = remainingLectures.some(
+            (l) => l.id === state.selectedLectureId,
+          )
+            ? state.selectedLectureId
+            : (remainingLectures.find((l) => l.courseId === nextSelectedCourseId)?.id ?? null);
 
           return {
             courses: remainingCourses,
@@ -297,13 +262,8 @@ export const useAppStore = create<AppState>()(
       },
 
       addLecture: (courseId, name) => {
-        const currentLectures = get().lectures.filter(
-          (l) => l.courseId === courseId,
-        );
-        const maxOrder = currentLectures.reduce(
-          (max, l) => Math.max(max, l.order),
-          0,
-        );
+        const currentLectures = get().lectures.filter((l) => l.courseId === courseId);
+        const maxOrder = currentLectures.reduce((max, l) => Math.max(max, l.order), 0);
         const now = new Date().toISOString();
 
         const newLecture: Lecture = {
@@ -328,9 +288,7 @@ export const useAppStore = create<AppState>()(
         const now = new Date().toISOString();
         set((state) => ({
           lectures: state.lectures.map((lecture) =>
-            lecture.id === id
-              ? { ...lecture, ...updates, updatedAt: now }
-              : lecture,
+            lecture.id === id ? { ...lecture, ...updates, updatedAt: now } : lecture,
           ),
         }));
       },
@@ -343,11 +301,9 @@ export const useAppStore = create<AppState>()(
 
           const nextSelectedLectureId =
             state.selectedLectureId === id
-              ? remainingLectures.find(
-                  (l) => l.courseId === targetLecture?.courseId,
-                )?.id ??
+              ? (remainingLectures.find((l) => l.courseId === targetLecture?.courseId)?.id ??
                 remainingLectures[0]?.id ??
-                null
+                null)
               : state.selectedLectureId;
 
           return {
@@ -414,21 +370,13 @@ export const useAppStore = create<AppState>()(
 
         if (phase === "GRADUATED") {
           // Promote to common pool with Rating.Good background calculation
-          updatedCard = promoteCardToGraduate(
-            card,
-            nowDate,
-            requestRetention,
-            dayCutoffHour,
-          );
+          updatedCard = promoteCardToGraduate(card, nowDate, requestRetention, dayCutoffHour);
         } else if (phase === "GRADUATION_RECOMMENDED") {
           updatedCard = {
             ...card,
             lecturePool: {
               phase: "GRADUATION_RECOMMENDED",
-              consecutiveCorrect: Math.max(
-                card.lecturePool.consecutiveCorrect,
-                2,
-              ),
+              consecutiveCorrect: Math.max(card.lecturePool.consecutiveCorrect, 2),
               lastAttemptAt: card.lecturePool.lastAttemptAt ?? now,
             },
             commonPool: null,
@@ -447,13 +395,10 @@ export const useAppStore = create<AppState>()(
             phase !== "GRADUATED"
               ? {
                   ...state.sessionState,
-                  retryCardIds: state.sessionState.retryCardIds.filter(
+                  retryCardIds: state.sessionState.retryCardIds.filter((cid) => cid !== id),
+                  todayMistakeCardIds: state.sessionState.todayMistakeCardIds.filter(
                     (cid) => cid !== id,
                   ),
-                  todayMistakeCardIds:
-                    state.sessionState.todayMistakeCardIds.filter(
-                      (cid) => cid !== id,
-                    ),
                 }
               : state.sessionState,
         }));
@@ -463,9 +408,7 @@ export const useAppStore = create<AppState>()(
         const now = new Date().toISOString();
         set((state) => ({
           cards: state.cards.map((card) =>
-            card.id === id
-              ? { ...card, isSuspended: !card.isSuspended, updatedAt: now }
-              : card,
+            card.id === id ? { ...card, isSuspended: !card.isSuspended, updatedAt: now } : card,
           ),
         }));
       },
@@ -477,9 +420,7 @@ export const useAppStore = create<AppState>()(
         const transitionResult = applyLectureTrainingAnswer(card, result, now);
 
         set((state) => ({
-          cards: state.cards.map((c) =>
-            c.id === cardId ? transitionResult.updatedCard : c,
-          ),
+          cards: state.cards.map((c) => (c.id === cardId ? transitionResult.updatedCard : c)),
         }));
 
         return transitionResult;
@@ -498,12 +439,7 @@ export const useAppStore = create<AppState>()(
               card.lecturePool.phase === "GRADUATION_RECOMMENDED"
             ) {
               graduatedCount++;
-              return promoteCardToGraduate(
-                card,
-                now,
-                requestRetention,
-                dayCutoffHour,
-              );
+              return promoteCardToGraduate(card, now, requestRetention, dayCutoffHour);
             }
             return card;
           }),
@@ -523,12 +459,7 @@ export const useAppStore = create<AppState>()(
           cards: prev.cards.map((card) => {
             if (targetSet.has(card.id) && card.lecturePool.phase !== "GRADUATED") {
               graduatedCount++;
-              return promoteCardToGraduate(
-                card,
-                now,
-                requestRetention,
-                dayCutoffHour,
-              );
+              return promoteCardToGraduate(card, now, requestRetention, dayCutoffHour);
             }
             return card;
           }),
@@ -637,13 +568,10 @@ export const useAppStore = create<AppState>()(
             cards: nextCards,
             sessionState: {
               ...state.sessionState,
-              retryCardIds: state.sessionState.retryCardIds.filter(
+              retryCardIds: state.sessionState.retryCardIds.filter((id) => !targetSet.has(id)),
+              todayMistakeCardIds: state.sessionState.todayMistakeCardIds.filter(
                 (id) => !targetSet.has(id),
               ),
-              todayMistakeCardIds:
-                state.sessionState.todayMistakeCardIds.filter(
-                  (id) => !targetSet.has(id),
-                ),
             },
           };
         });
@@ -717,13 +645,9 @@ export const useAppStore = create<AppState>()(
           courses: merged.courses,
           lectures: merged.lectures,
           cards: merged.cards,
-          settings: backup.settings
-            ? { ...state.settings, ...backup.settings }
-            : state.settings,
-          selectedCourseId:
-            state.selectedCourseId ?? merged.courses[0]?.id ?? null,
-          selectedLectureId:
-            state.selectedLectureId ?? merged.lectures[0]?.id ?? null,
+          settings: backup.settings ? { ...state.settings, ...backup.settings } : state.settings,
+          selectedCourseId: state.selectedCourseId ?? merged.courses[0]?.id ?? null,
+          selectedLectureId: state.selectedLectureId ?? merged.lectures[0]?.id ?? null,
         });
 
         return {
@@ -734,7 +658,8 @@ export const useAppStore = create<AppState>()(
       },
 
       addCardsBatch: (courseId, lectureId, contents, customBundleId) => {
-        const bundleId = customBundleId || `bundle_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const bundleId =
+          customBundleId || `bundle_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const newCards: Card[] = contents.map((c) =>
           createNewCard({
             id: `card_${generateId()}`,
@@ -770,10 +695,7 @@ export const useAppStore = create<AppState>()(
 
         set((state) => ({
           cards: state.cards.filter((card) => card.bundleId !== bundleId),
-          lastImportBatch:
-            currentLastBatch?.bundleId === bundleId
-              ? null
-              : currentLastBatch,
+          lastImportBatch: currentLastBatch?.bundleId === bundleId ? null : currentLastBatch,
         }));
         const deletedCount = initialCount - get().cards.length;
         return deletedCount;
@@ -791,9 +713,7 @@ export const useAppStore = create<AppState>()(
         set((state) => {
           let nextLectureId = state.selectedLectureId;
           if (courseId) {
-            const lectures = state.lectures.filter(
-              (l) => l.courseId === courseId,
-            );
+            const lectures = state.lectures.filter((l) => l.courseId === courseId);
             if (!lectures.some((l) => l.id === nextLectureId)) {
               nextLectureId = lectures[0]?.id ?? null;
             }

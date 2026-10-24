@@ -26,9 +26,7 @@ export type LectureCardPhase =
  * 1: 連続正解0の未暗記（未卒業）
  */
 export type LectureCheckCategory =
-  | "PRIORITY_3_COOLDOWN_CLEARED"
-  | "PRIORITY_2_UNATTEMPTED"
-  | "PRIORITY_1_ZERO_STREAK";
+  "PRIORITY_3_COOLDOWN_CLEARED" | "PRIORITY_2_UNATTEMPTED" | "PRIORITY_1_ZERO_STREAK";
 
 /** カテゴリー優先度モード（3段階 & 階層継承） */
 export type PriorityMode =
@@ -423,10 +421,7 @@ export function createNewCard(params: {
 }
 
 /** 講義プール卒業（共通プール昇格） */
-export function graduateCardToCommonPool(
-  card: Card,
-  initialFsrsCard: FSRSCard,
-): Card {
+export function graduateCardToCommonPool(card: Card, initialFsrsCard: FSRSCard): Card {
   const now = new Date().toISOString();
   return {
     ...card,
@@ -445,10 +440,7 @@ export function graduateCardToCommonPool(
 }
 
 /** 共通プールから講義プールへ降格（FSRS履歴リセット ➔ 未卒業・連続正解0・lastAttemptAt=現在時刻） */
-export function demoteCardToLecturePool(
-  card: Card,
-  now: Date = new Date(),
-): Card {
+export function demoteCardToLecturePool(card: Card, now: Date = new Date()): Card {
   const nowIso = now.toISOString();
   return {
     ...card,

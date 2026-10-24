@@ -1,12 +1,8 @@
 import React from "react";
-import {
-  HomeIcon,
-  BookOpenIcon,
-  SettingsIcon,
-  ArrowLeftIcon,
-} from "../icons";
+
 import { useAppStore } from "../../store/useAppStore";
-import type { Course, Card } from "../../types/schema";
+import type { Card,Course } from "../../types/schema";
+import { ArrowLeftIcon,BookOpenIcon, HomeIcon, SettingsIcon } from "../icons";
 
 export type NavCategory = "HOME" | "MATERIALS";
 export type HomeSubTab = "MAIN" | "MISTAKES" | "FORGOTTEN";
@@ -40,9 +36,8 @@ export function DesktopSidebar({
   // バッジ集計
   const mistakeCount = React.useMemo(() => {
     const mistakeSet = new Set(sessionState.todayMistakeCardIds);
-    return cards.filter(
-      (c: Card) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED",
-    ).length;
+    return cards.filter((c: Card) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED")
+      .length;
   }, [cards, sessionState.todayMistakeCardIds]);
 
   const forgottenCount = React.useMemo(() => {
@@ -50,14 +45,14 @@ export function DesktopSidebar({
   }, [getCommonPoolQueue]);
 
   return (
-    <aside className="w-60 bg-slate-900 border-r border-slate-800 flex flex-col justify-between h-full select-none flex-shrink-0 z-20">
-      <div className="p-3.5 space-y-4 overflow-y-auto">
+    <aside className="z-20 flex h-full w-60 flex-shrink-0 flex-col justify-between border-r border-slate-800 bg-slate-900 select-none">
+      <div className="space-y-4 overflow-y-auto p-3.5">
         {/* アプリロゴ / タイトル */}
         <div className="flex items-center space-x-2.5 px-2 py-1">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-md shadow-indigo-600/30">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-md shadow-indigo-600/30">
             K
           </div>
-          <span className="font-bold text-sm tracking-wide text-white">Kioku</span>
+          <span className="text-sm font-bold tracking-wide text-white">Kioku</span>
         </div>
 
         {/* ナビゲーションリスト */}
@@ -69,10 +64,10 @@ export function DesktopSidebar({
               onClick={() => {
                 onSelectCategory("HOME");
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition ${
                 currentCategory === "HOME"
                   ? "bg-indigo-600/20 text-indigo-300"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
               <div className="flex items-center space-x-2">
@@ -82,17 +77,17 @@ export function DesktopSidebar({
             </button>
 
             {/* ホーム配下の中カテゴリー (インデントしてぶら下がり表示) */}
-            <div className="ml-4 pl-2 border-l border-slate-800 mt-1 space-y-0.5">
+            <div className="mt-1 ml-4 space-y-0.5 border-l border-slate-800 pl-2">
               <button
                 type="button"
                 onClick={() => {
                   onSelectCategory("HOME");
                   onSelectHomeSubTab("MAIN");
                 }}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs transition ${
                   currentCategory === "HOME" && homeSubTab === "MAIN"
-                    ? "bg-slate-800 text-white font-medium"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                    ? "bg-slate-800 font-medium text-white"
+                    : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
                 }`}
               >
                 <span>メイン</span>
@@ -104,15 +99,15 @@ export function DesktopSidebar({
                   onSelectCategory("HOME");
                   onSelectHomeSubTab("MISTAKES");
                 }}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs transition ${
                   currentCategory === "HOME" && homeSubTab === "MISTAKES"
-                    ? "bg-slate-800 text-amber-300 font-medium"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                    ? "bg-slate-800 font-medium text-amber-300"
+                    : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
                 }`}
               >
                 <span>今日のミス</span>
                 {mistakeCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono text-[10px] font-bold">
+                  <span className="py-0.2 rounded-full border border-amber-500/40 bg-amber-500/20 px-1.5 font-mono text-[10px] font-bold text-amber-300">
                     {mistakeCount}
                   </span>
                 )}
@@ -124,15 +119,15 @@ export function DesktopSidebar({
                   onSelectCategory("HOME");
                   onSelectHomeSubTab("FORGOTTEN");
                 }}
-                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs transition ${
                   currentCategory === "HOME" && homeSubTab === "FORGOTTEN"
-                    ? "bg-slate-800 text-rose-300 font-medium"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                    ? "bg-slate-800 font-medium text-rose-300"
+                    : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
                 }`}
               >
                 <span>忘れかけ</span>
                 {forgottenCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono text-[10px] font-bold">
+                  <span className="py-0.2 rounded-full border border-rose-500/40 bg-rose-500/20 px-1.5 font-mono text-[10px] font-bold text-rose-300">
                     {forgottenCount}
                   </span>
                 )}
@@ -147,34 +142,32 @@ export function DesktopSidebar({
               onClick={() => {
                 onSelectCategory("MATERIALS");
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition ${
                 currentCategory === "MATERIALS"
                   ? "bg-indigo-600/20 text-indigo-300"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
               }`}
             >
               <div className="flex items-center space-x-2">
                 <BookOpenIcon size={16} />
                 <span>教材</span>
               </div>
-              <span className="text-[11px] font-mono text-slate-500">
-                {courses.length}科目
-              </span>
+              <span className="font-mono text-[11px] text-slate-500">{courses.length}科目</span>
             </button>
 
             {/* 教材選択中かつ科目選択時のパンくず・戻るボタン */}
             {currentCategory === "MATERIALS" && selectedCourse && (
-              <div className="ml-4 pl-2 border-l border-slate-800 mt-1">
+              <div className="mt-1 ml-4 border-l border-slate-800 pl-2">
                 <button
                   type="button"
                   onClick={onBackToCourseList}
-                  className="w-full text-left px-2 py-1.5 rounded-lg text-[11px] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/40 flex items-center space-x-1 transition cursor-pointer"
+                  className="flex w-full cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-left text-[11px] text-indigo-400 transition hover:bg-indigo-950/40 hover:text-indigo-300"
                   title="教材一覧（科目リスト）へ戻る"
                 >
                   <ArrowLeftIcon size={12} />
                   <span>教材一覧へ</span>
                 </button>
-                <div className="px-2 py-1 text-xs text-white font-medium truncate">
+                <div className="truncate px-2 py-1 text-xs font-medium text-white">
                   📚 {selectedCourse.name}
                 </div>
               </div>
@@ -184,11 +177,11 @@ export function DesktopSidebar({
       </div>
 
       {/* サイドバー最下部: 設定ボタン */}
-      <div className="p-3 border-t border-slate-800/80">
+      <div className="border-t border-slate-800/80 p-3">
         <button
           type="button"
           onClick={onOpenSettings}
-          className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/80 transition cursor-pointer"
+          className="flex w-full cursor-pointer items-center space-x-2 rounded-xl px-2.5 py-2 text-xs font-medium text-slate-400 transition hover:bg-slate-800/80 hover:text-white"
         >
           <SettingsIcon size={15} />
           <span>設定</span>
@@ -209,27 +202,29 @@ export function MobileBottomNav({
   onSelectCategory: (category: NavCategory) => void;
 }) {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-slate-900/95 backdrop-blur border-t border-slate-800 flex items-center justify-around z-40 select-none">
+    <nav className="fixed right-0 bottom-0 left-0 z-40 flex h-14 items-center justify-around border-t border-slate-800 bg-slate-900/95 backdrop-blur select-none md:hidden">
       <button
         type="button"
         onClick={() => onSelectCategory("HOME")}
-        className={`flex-1 flex flex-col items-center justify-center h-full transition ${
+        className={`flex h-full flex-1 flex-col items-center justify-center transition ${
           currentCategory === "HOME" ? "text-indigo-400" : "text-slate-400 hover:text-slate-200"
         }`}
       >
         <HomeIcon size={18} />
-        <span className="text-[10px] mt-0.5 font-medium">ホーム</span>
+        <span className="mt-0.5 text-[10px] font-medium">ホーム</span>
       </button>
 
       <button
         type="button"
         onClick={() => onSelectCategory("MATERIALS")}
-        className={`flex-1 flex flex-col items-center justify-center h-full transition ${
-          currentCategory === "MATERIALS" ? "text-indigo-400" : "text-slate-400 hover:text-slate-200"
+        className={`flex h-full flex-1 flex-col items-center justify-center transition ${
+          currentCategory === "MATERIALS"
+            ? "text-indigo-400"
+            : "text-slate-400 hover:text-slate-200"
         }`}
       >
         <BookOpenIcon size={18} />
-        <span className="text-[10px] mt-0.5 font-medium">教材</span>
+        <span className="mt-0.5 text-[10px] font-medium">教材</span>
       </button>
     </nav>
   );

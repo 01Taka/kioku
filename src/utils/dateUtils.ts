@@ -1,4 +1,4 @@
-import { SYSTEM_CONSTANTS, getCutoffTime, getNextCutoffTime } from "../types/schema";
+import { getCutoffTime, getNextCutoffTime,SYSTEM_CONSTANTS } from "../types/schema";
 
 /**
  * 午前04:00（cutoffHour）基準の活動日付キー（YYYY-MM-DD）を取得する。
@@ -34,7 +34,10 @@ export function isReviewedToday(
 /**
  * 先取り（パープル）カードの最長 due 日時を「○月○日（あと○日後）」形式でフォーマットする。
  */
-export function formatFutureDueNotice(dueIso: string, now: Date = new Date()): {
+export function formatFutureDueNotice(
+  dueIso: string,
+  now: Date = new Date(),
+): {
   dateLabel: string;
   daysAhead: number;
 } {

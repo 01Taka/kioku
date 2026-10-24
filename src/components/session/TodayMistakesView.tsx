@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo,useState } from "react";
+
 import { useAppStore } from "../../store/useAppStore";
-import { XIcon, UndoIcon, CheckIcon } from "../icons";
+import { CheckIcon,UndoIcon, XIcon } from "../icons";
 
 export interface TodayMistakesSectionProps {
   /** コンパクト表示（セッションブレイク画面への埋め込み時） */
@@ -8,14 +9,8 @@ export interface TodayMistakesSectionProps {
 }
 
 export function TodayMistakesSection({ compact = false }: TodayMistakesSectionProps) {
-  const {
-    cards,
-    courses,
-    lectures,
-    sessionState,
-    syncDailyCutoff,
-    batchDemoteToLecturePool,
-  } = useAppStore();
+  const { cards, courses, lectures, sessionState, syncDailyCutoff, batchDemoteToLecturePool } =
+    useAppStore();
 
   useEffect(() => {
     syncDailyCutoff();
@@ -81,9 +76,9 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
 
   if (mistakeCards.length === 0) {
     return (
-      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-5 text-center space-y-2">
+      <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-900/60 p-5 text-center">
         {demotedNoticeCount !== null && (
-          <div className="mb-2 text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 rounded-lg py-1.5 px-3">
+          <div className="mb-2 rounded-lg border border-emerald-800/60 bg-emerald-950/60 px-3 py-1.5 text-xs text-emerald-300">
             ✅ {demotedNoticeCount} 枚のカードを所属講義の専用プール（未暗記）へ戻しました
           </div>
         )}
@@ -97,7 +92,7 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
   return (
     <div className="space-y-3">
       {demotedNoticeCount !== null && (
-        <div className="text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 rounded-lg py-2 px-3 flex items-center justify-between">
+        <div className="flex items-center justify-between rounded-lg border border-emerald-800/60 bg-emerald-950/60 px-3 py-2 text-xs text-emerald-300">
           <span>
             ✅ {demotedNoticeCount} 枚のカードを所属講義の専用プール（未暗記）へ戻しました
           </span>
@@ -125,7 +120,7 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
           <button
             type="button"
             onClick={selectAll}
-            className="px-2.5 py-1 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition cursor-pointer"
+            className="cursor-pointer rounded-lg bg-slate-800 px-2.5 py-1 text-[11px] text-slate-300 transition hover:bg-slate-700"
           >
             {selectedIds.size === mistakeCards.length ? "すべて解除" : "すべて選択"}
           </button>
@@ -133,7 +128,7 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
             type="button"
             onClick={handleBatchDemote}
             disabled={selectedIds.size === 0}
-            className="px-3 py-1.5 text-xs font-semibold bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg shadow transition flex items-center space-x-1.5 cursor-pointer"
+            className="flex cursor-pointer items-center space-x-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <UndoIcon size={13} />
             <span>選択したカードを講義プールに戻す ({selectedIds.size}枚)</span>
@@ -141,69 +136,65 @@ export function TodayMistakesSection({ compact = false }: TodayMistakesSectionPr
         </div>
       </div>
 
-      <div
-        className={`space-y-2 overflow-y-auto pr-1 ${
-          compact ? "max-h-56" : "max-h-96"
-        }`}
-      >
+      <div className={`space-y-2 overflow-y-auto pr-1 ${compact ? "max-h-56" : "max-h-96"}`}>
         {mistakeCards.map(({ card, courseName, lectureName, consecutiveFailCount }) => {
           const isChecked = selectedIds.has(card.id);
           return (
             <label
               key={card.id}
               onClick={() => toggleSelect(card.id)}
-              className={`block p-3 rounded-xl border transition cursor-pointer select-none ${
+              className={`block cursor-pointer rounded-xl border p-3 transition select-none ${
                 isChecked
-                  ? "bg-amber-950/30 border-amber-600/60"
-                  : "bg-slate-900/80 border-slate-800 hover:border-slate-700"
+                  ? "border-amber-600/60 bg-amber-950/30"
+                  : "border-slate-800 bg-slate-900/80 hover:border-slate-700"
               }`}
             >
               <div className="flex items-start space-x-3">
                 <div className="pt-0.5">
                   <div
-                    className={`w-4 h-4 rounded flex items-center justify-center border transition ${
+                    className={`flex h-4 w-4 items-center justify-center rounded border transition ${
                       isChecked
-                        ? "bg-amber-500 border-amber-400 text-slate-950"
-                        : "bg-slate-950 border-slate-700"
+                        ? "border-amber-400 bg-amber-500 text-slate-950"
+                        : "border-slate-700 bg-slate-950"
                     }`}
                   >
                     {isChecked && <CheckIcon size={11} />}
                   </div>
                 </div>
 
-                <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex flex-wrap items-center justify-between gap-1.5">
                     {/* 所属パンくず */}
-                    <span className="text-[11px] text-indigo-300 font-medium truncate">
+                    <span className="truncate text-[11px] font-medium text-indigo-300">
                       {courseName} &gt; {lectureName}
                     </span>
 
                     {/* 連続ミス回数バッジ */}
                     <div className="flex items-center space-x-1.5">
                       {consecutiveFailCount >= 3 ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-700/70">
+                        <span className="rounded-full border border-rose-700/70 bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-300">
                           🔥 {consecutiveFailCount}連続ミス (降格推奨)
                         </span>
                       ) : consecutiveFailCount === 2 ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-700/70">
+                        <span className="rounded-full border border-amber-700/70 bg-amber-950/80 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                           ⚠️ 2連続ミス (降格推奨)
                         </span>
                       ) : (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-slate-700">
+                        <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-amber-300">
                           🔁 1回ミス (明日リベンジ出題)
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <div className="bg-slate-950/70 rounded-lg p-2 border border-slate-800/80">
-                      <span className="text-[10px] text-slate-500 block">問題</span>
-                      <p className="text-slate-100 line-clamp-2">{card.front}</p>
+                  <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-2">
+                      <span className="block text-[10px] text-slate-500">問題</span>
+                      <p className="line-clamp-2 text-slate-100">{card.front}</p>
                     </div>
-                    <div className="bg-slate-950/70 rounded-lg p-2 border border-slate-800/80">
-                      <span className="text-[10px] text-slate-500 block">解答</span>
-                      <p className="text-slate-300 line-clamp-2">{card.back}</p>
+                    <div className="rounded-lg border border-slate-800/80 bg-slate-950/70 p-2">
+                      <span className="block text-[10px] text-slate-500">解答</span>
+                      <p className="line-clamp-2 text-slate-300">{card.back}</p>
                     </div>
                   </div>
                 </div>
@@ -222,20 +213,20 @@ export interface TodayMistakesModalProps {
 
 export function TodayMistakesModal({ onClose }: TodayMistakesModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-5 shadow-2xl">
+    <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
             <h2 className="text-base font-bold text-white">
               📝 今日間違えた問題（振り返り・一括降格ハブ）
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="mt-0.5 text-xs text-slate-400">
               ミスした問題は翌日の共通プールで最優先（🔁オレンジ枠）出題されます。記憶が抜けている問題は講義プールへ戻して再特訓できます。
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
           >
             <XIcon size={18} />
           </button>
@@ -243,10 +234,10 @@ export function TodayMistakesModal({ onClose }: TodayMistakesModalProps) {
 
         <TodayMistakesSection />
 
-        <div className="flex justify-end pt-2 border-t border-slate-800">
+        <div className="flex justify-end border-t border-slate-800 pt-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+            className="cursor-pointer rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-700"
           >
             閉じる
           </button>

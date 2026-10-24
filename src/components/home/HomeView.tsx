@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useMemo,useState } from "react";
+
 import { useAppStore } from "../../store/useAppStore";
 import { PlayIcon, UndoIcon } from "../icons";
+import type { HomeSubTab } from "../navigation/AppNavigation";
+import type { PracticeCardItem } from "../practice/LecturePlayer";
+import { LecturePlayer } from "../practice/LecturePlayer";
 import { HomeMainStartModal } from "./HomeMainStartModal";
 import { HomeMistakesStartModal } from "./HomeMistakesStartModal";
-import { LecturePlayer } from "../practice/LecturePlayer";
-import type { PracticeCardItem } from "../practice/LecturePlayer";
-import type { HomeSubTab } from "../navigation/AppNavigation";
 
 interface HomeViewProps {
   activeSubTab: HomeSubTab;
@@ -13,19 +14,9 @@ interface HomeViewProps {
   onStartCommonSession: () => void;
 }
 
-export function HomeView({
-  activeSubTab,
-  onSelectSubTab,
-  onStartCommonSession,
-}: HomeViewProps) {
-  const {
-    cards,
-    courses,
-    lectures,
-    sessionState,
-    getCommonPoolQueue,
-    batchDemoteToLecturePool,
-  } = useAppStore();
+export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }: HomeViewProps) {
+  const { cards, courses, lectures, sessionState, getCommonPoolQueue, batchDemoteToLecturePool } =
+    useAppStore();
 
   // モーダル開閉状態
   const [isMainStartModalOpen, setIsMainStartModalOpen] = useState(false);
@@ -40,9 +31,7 @@ export function HomeView({
   // 1. 今日のミス問題リスト
   const mistakeCards = useMemo(() => {
     const mistakeSet = new Set(sessionState.todayMistakeCardIds);
-    return cards.filter(
-      (c) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED",
-    );
+    return cards.filter((c) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED");
   }, [cards, sessionState.todayMistakeCardIds]);
 
   // 2. 忘れかけ（R < 0.35）問題リスト
@@ -85,13 +74,13 @@ export function HomeView({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden select-none">
+    <div className="flex h-full flex-1 flex-col overflow-hidden bg-slate-950 select-none">
       {/* スマホ版: 上部タブナビゲーション */}
-      <div className="md:hidden border-b border-slate-800 bg-slate-900/80 px-4 pt-3 flex items-center space-x-2">
+      <div className="flex items-center space-x-2 border-b border-slate-800 bg-slate-900/80 px-4 pt-3 md:hidden">
         <button
           type="button"
           onClick={() => onSelectSubTab("MAIN")}
-          className={`pb-2 text-xs font-semibold border-b-2 transition cursor-pointer ${
+          className={`cursor-pointer border-b-2 pb-2 text-xs font-semibold transition ${
             activeSubTab === "MAIN"
               ? "border-indigo-500 text-white"
               : "border-transparent text-slate-400 hover:text-slate-200"
@@ -102,7 +91,7 @@ export function HomeView({
         <button
           type="button"
           onClick={() => onSelectSubTab("MISTAKES")}
-          className={`pb-2 text-xs font-semibold border-b-2 transition flex items-center space-x-1 cursor-pointer ${
+          className={`flex cursor-pointer items-center space-x-1 border-b-2 pb-2 text-xs font-semibold transition ${
             activeSubTab === "MISTAKES"
               ? "border-amber-500 text-amber-300"
               : "border-transparent text-slate-400 hover:text-slate-200"
@@ -110,7 +99,7 @@ export function HomeView({
         >
           <span>今日のミス</span>
           {mistakeCards.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[10px]">
+            <span className="py-0.2 rounded-full bg-amber-500/20 px-1.5 font-mono text-[10px] text-amber-300">
               {mistakeCards.length}
             </span>
           )}
@@ -118,7 +107,7 @@ export function HomeView({
         <button
           type="button"
           onClick={() => onSelectSubTab("FORGOTTEN")}
-          className={`pb-2 text-xs font-semibold border-b-2 transition flex items-center space-x-1 cursor-pointer ${
+          className={`flex cursor-pointer items-center space-x-1 border-b-2 pb-2 text-xs font-semibold transition ${
             activeSubTab === "FORGOTTEN"
               ? "border-rose-500 text-rose-300"
               : "border-transparent text-slate-400 hover:text-slate-200"
@@ -126,7 +115,7 @@ export function HomeView({
         >
           <span>忘れかけ</span>
           {recoveryItems.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-mono text-[10px]">
+            <span className="py-0.2 rounded-full bg-rose-500/20 px-1.5 font-mono text-[10px] text-rose-300">
               {recoveryItems.length}
             </span>
           )}
@@ -134,7 +123,7 @@ export function HomeView({
       </div>
 
       {/* サブタブ別コンテンツ表示 */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-4xl w-full mx-auto">
+      <div className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4 sm:p-6">
         {/* ======================================================== */}
         {/* 1. ホーム / メイン */}
         {/* ======================================================== */}
@@ -145,7 +134,7 @@ export function HomeView({
               <button
                 type="button"
                 onClick={() => setIsMainStartModalOpen(true)}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition cursor-pointer"
+                className="flex cursor-pointer items-center space-x-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500"
               >
                 <PlayIcon size={16} />
                 <span>はじめる</span>
@@ -153,12 +142,12 @@ export function HomeView({
             </div>
 
             {/* 将来のマイルストーン・モチベ用スペース */}
-            <div className="p-8 border border-dashed border-slate-800 rounded-2xl bg-slate-900/30 text-center space-y-2">
+            <div className="space-y-2 rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-8 text-center">
               <span className="text-2xl">🌱</span>
-              <p className="text-xs text-slate-400 font-medium">
+              <p className="text-xs font-medium text-slate-400">
                 継続学習マイルストーンエリア（今後機能拡張予定）
               </p>
-              <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+              <p className="mx-auto max-w-md text-[11px] text-slate-500">
                 「はじめる」ボタンを押して、今日の共通復習（10問マイクロセッション）をスタートしましょう。
               </p>
             </div>
@@ -176,20 +165,20 @@ export function HomeView({
                 type="button"
                 onClick={() => setIsMistakesStartModalOpen(true)}
                 disabled={mistakeCards.length === 0}
-                className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl shadow-md shadow-amber-600/30 flex items-center space-x-1.5 transition cursor-pointer"
+                className="flex cursor-pointer items-center space-x-1.5 rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-amber-600/30 transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <PlayIcon size={14} />
                 <span>はじめる ({mistakeCards.length}問)</span>
               </button>
 
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="font-mono text-xs text-slate-400">
                 本日間違えた問題: {mistakeCards.length} 件
               </span>
             </div>
 
             {/* 問題リスト */}
             {mistakeCards.length === 0 ? (
-              <div className="p-8 border border-slate-800 rounded-2xl bg-slate-900/40 text-center">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 text-center">
                 <p className="text-xs text-slate-400">本日間違えた問題はありません 🎉</p>
               </div>
             ) : (
@@ -197,22 +186,22 @@ export function HomeView({
                 {mistakeCards.map((card, idx) => (
                   <div
                     key={card.id}
-                    className="p-3.5 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-slate-700 transition space-y-1.5"
+                    className="space-y-1.5 rounded-xl border border-slate-800 bg-slate-900/80 p-3.5 transition hover:border-slate-700"
                   >
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-indigo-300 font-medium">
+                      <span className="font-medium text-indigo-300">
                         📚 {courseMap.get(card.courseId) || "科目"} &gt;{" "}
                         {lectureMap.get(card.lectureId) || "講義"}
                       </span>
                       {card.commonPool?.consecutiveFailCount ? (
-                        <span className="px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-800/60 font-bold text-[10px]">
+                        <span className="rounded-full border border-rose-800/60 bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-300">
                           ⚠️ {card.commonPool.consecutiveFailCount}連続ミス
                         </span>
                       ) : null}
                     </div>
 
-                    <p className="text-xs font-medium text-slate-100 whitespace-pre-wrap">
-                      <span className="text-slate-500 font-mono mr-1.5">Q{idx + 1}.</span>
+                    <p className="text-xs font-medium whitespace-pre-wrap text-slate-100">
+                      <span className="mr-1.5 font-mono text-slate-500">Q{idx + 1}.</span>
                       {card.front}
                     </p>
                   </div>
@@ -233,7 +222,7 @@ export function HomeView({
                 <button
                   type="button"
                   onClick={() => handleDemoteForgotten(false)}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/30 flex items-center space-x-1.5 transition cursor-pointer"
+                  className="flex cursor-pointer items-center space-x-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/30 transition hover:bg-rose-500"
                 >
                   <UndoIcon size={13} />
                   <span>選択した問題を除外 ({selectedForgottenIds.size}件)</span>
@@ -243,7 +232,7 @@ export function HomeView({
                   type="button"
                   onClick={() => handleDemoteForgotten(true)}
                   disabled={recoveryItems.length === 0}
-                  className="px-4 py-2 bg-slate-800 hover:bg-rose-950 hover:text-rose-300 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 font-semibold text-xs rounded-xl border border-slate-700 transition cursor-pointer flex items-center space-x-1.5"
+                  className="flex cursor-pointer items-center space-x-1.5 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-rose-950 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <UndoIcon size={13} />
                   <span>すべて除外 ({recoveryItems.length}件)</span>
@@ -260,18 +249,16 @@ export function HomeView({
                       setSelectedForgottenIds(new Set(recoveryItems.map((r) => r.card.id)));
                     }
                   }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
+                  className="cursor-pointer text-xs text-indigo-400 hover:text-indigo-300"
                 >
-                  {selectedForgottenIds.size === recoveryItems.length
-                    ? "選択解除"
-                    : "全選択"}
+                  {selectedForgottenIds.size === recoveryItems.length ? "選択解除" : "全選択"}
                 </button>
               )}
             </div>
 
             {/* 忘れかけ問題リスト */}
             {recoveryItems.length === 0 ? (
-              <div className="p-8 border border-slate-800 rounded-2xl bg-slate-900/40 text-center">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 text-center">
                 <p className="text-xs text-slate-400">
                   現在、記憶維持率が35%未満に低下した問題はありません ✨
                 </p>
@@ -292,30 +279,30 @@ export function HomeView({
                         }
                         setSelectedForgottenIds(next);
                       }}
-                      className={`p-3.5 border rounded-xl transition cursor-pointer flex items-start space-x-3 ${
+                      className={`flex cursor-pointer items-start space-x-3 rounded-xl border p-3.5 transition ${
                         isChecked
-                          ? "bg-indigo-950/40 border-indigo-500/60"
-                          : "bg-slate-900/80 border-slate-800 hover:border-slate-700"
+                          ? "border-indigo-500/60 bg-indigo-950/40"
+                          : "border-slate-800 bg-slate-900/80 hover:border-slate-700"
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}} // 親divのクリックで処理
-                        className="mt-1 accent-indigo-500 rounded cursor-pointer"
+                        className="mt-1 cursor-pointer rounded accent-indigo-500"
                       />
 
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-indigo-300 font-medium">
+                          <span className="font-medium text-indigo-300">
                             📚 {courseName} &gt; {lectureName}
                           </span>
-                          <span className="text-rose-400 font-mono font-bold">
+                          <span className="font-mono font-bold text-rose-400">
                             維持率 R: {Math.round(retrievability * 100)}%
                           </span>
                         </div>
 
-                        <p className="text-xs text-slate-100 font-medium whitespace-pre-wrap">
+                        <p className="text-xs font-medium whitespace-pre-wrap text-slate-100">
                           {card.front}
                         </p>
                       </div>

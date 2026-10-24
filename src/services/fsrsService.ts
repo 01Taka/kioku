@@ -1,24 +1,19 @@
 import {
+  type Card as FSRSCard,
+  createEmptyCard,
   fsrs,
   generatorParameters,
-  createEmptyCard,
   Rating,
-  TypeConvert,
-  type Card as FSRSCard,
   type RecordLogItem,
+  TypeConvert,
 } from "ts-fsrs";
-import {
-  SYSTEM_CONSTANTS,
-  getNextCutoffTime,
-  type ActiveRating,
-} from "../types/schema";
+
+import { type ActiveRating,getNextCutoffTime, SYSTEM_CONSTANTS } from "../types/schema";
 
 /**
  * システム仕様（目標保持率 0.82、サブデイ無効化）に準拠した FSRS インスタンスを生成
  */
-export function createFsrsInstance(
-  requestRetention: number = SYSTEM_CONSTANTS.TARGET_RETENTION,
-) {
+export function createFsrsInstance(requestRetention: number = SYSTEM_CONSTANTS.TARGET_RETENTION) {
   const params = generatorParameters({
     request_retention: requestRetention,
     enable_short_term: false,

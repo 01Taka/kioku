@@ -64,11 +64,7 @@ export function EditIcon({ size = 16, className = "", ...props }: IconProps) {
   );
 }
 
-export function ChevronRightIcon({
-  size = 16,
-  className = "",
-  ...props
-}: IconProps) {
+export function ChevronRightIcon({ size = 16, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -87,11 +83,7 @@ export function ChevronRightIcon({
   );
 }
 
-export function ChevronDownIcon({
-  size = 16,
-  className = "",
-  ...props
-}: IconProps) {
+export function ChevronDownIcon({ size = 16, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -109,9 +101,6 @@ export function ChevronDownIcon({
     </svg>
   );
 }
-
-
-
 
 export function LayersIcon({ size = 18, className = "", ...props }: IconProps) {
   return (
@@ -193,11 +182,7 @@ export function ClockIcon({ size = 16, className = "", ...props }: IconProps) {
   );
 }
 
-export function ArrowUpRightIcon({
-  size = 16,
-  className = "",
-  ...props
-}: IconProps) {
+export function ArrowUpRightIcon({ size = 16, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -237,11 +222,7 @@ export function PauseIcon({ size = 14, className = "", ...props }: IconProps) {
   );
 }
 
-export function SparklesIcon({
-  size = 16,
-  className = "",
-  ...props
-}: IconProps) {
+export function SparklesIcon({ size = 16, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -284,11 +265,7 @@ export function UndoIcon({ size = 16, className = "", ...props }: IconProps) {
   );
 }
 
-export function SlidersIcon({
-  size = 14,
-  className = "",
-  ...props
-}: IconProps) {
+export function SlidersIcon({ size = 14, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -334,11 +311,7 @@ export function PlayIcon({ size = 16, className = "", ...props }: IconProps) {
   );
 }
 
-export function ShuffleIcon({
-  size = 14,
-  className = "",
-  ...props
-}: IconProps) {
+export function ShuffleIcon({ size = 14, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -361,11 +334,7 @@ export function ShuffleIcon({
   );
 }
 
-export function MoreVerticalIcon({
-  size = 16,
-  className = "",
-  ...props
-}: IconProps) {
+export function MoreVerticalIcon({ size = 16, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -386,11 +355,7 @@ export function MoreVerticalIcon({
   );
 }
 
-export function HomeIcon({
-  size = 18,
-  className = "",
-  ...props
-}: IconProps) {
+export function HomeIcon({ size = 18, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -410,11 +375,7 @@ export function HomeIcon({
   );
 }
 
-export function BookOpenIcon({
-  size = 18,
-  className = "",
-  ...props
-}: IconProps) {
+export function BookOpenIcon({ size = 18, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -434,11 +395,7 @@ export function BookOpenIcon({
   );
 }
 
-export function ArrowLeftIcon({
-  size = 16,
-  className = "",
-  ...props
-}: IconProps) {
+export function ArrowLeftIcon({ size = 16, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -458,11 +415,7 @@ export function ArrowLeftIcon({
   );
 }
 
-export function SettingsIcon({
-  size = 18,
-  className = "",
-  ...props
-}: IconProps) {
+export function SettingsIcon({ size = 18, className = "", ...props }: IconProps) {
   return (
     <svg
       width={size}
@@ -481,11 +434,3 @@ export function SettingsIcon({
     </svg>
   );
 }
-
-
-
-
-
-
-
-

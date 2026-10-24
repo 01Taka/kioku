@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef,useState } from "react";
+
 import type { LectureCheckCategory } from "../../types/schema";
-import { XIcon, ShuffleIcon, ArrowUpRightIcon } from "../icons";
+import { ArrowUpRightIcon,ShuffleIcon, XIcon } from "../icons";
 
 export interface PracticeCardItem {
   id: string;
@@ -32,12 +33,7 @@ export interface LecturePlayerProps {
 }
 
 type SlideAnimationState =
-  | "idle"
-  | "slide-out-up"
-  | "prepare-bottom"
-  | "slide-in"
-  | "slide-out-down"
-  | "prepare-top";
+  "idle" | "slide-out-up" | "prepare-bottom" | "slide-in" | "slide-out-down" | "prepare-top";
 
 export function LecturePlayer({
   lectureTitle,
@@ -277,9 +273,9 @@ export function LecturePlayer({
   // カードが0枚の場合
   if (totalCards === 0) {
     return (
-      <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
-          <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mx-auto text-slate-400">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md">
+        <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center shadow-2xl">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-slate-400">
             📭
           </div>
           <h3 className="text-base font-bold text-white">カードがありません</h3>
@@ -288,7 +284,7 @@ export function LecturePlayer({
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-xl font-medium transition cursor-pointer"
+            className="cursor-pointer rounded-xl bg-slate-800 px-4 py-2 text-xs font-medium text-slate-200 transition hover:bg-slate-700"
           >
             講義画面に戻る
           </button>
@@ -304,42 +300,42 @@ export function LecturePlayer({
     const correctRate = Math.round((correctCount / totalCards) * 100);
 
     return (
-      <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl">
-          <div className="text-center space-y-2">
+      <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md">
+        <div className="w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+          <div className="space-y-2 text-center">
             <span className="text-4xl">🎉</span>
             <h2 className="text-lg font-bold text-white">
               {mode === "TRAINING" ? "チェックが完了しました" : "全問演習が完了しました"}
             </h2>
             <p className="text-xs text-slate-400">{lectureTitle}</p>
             {mode === "TRAINING" && (
-              <p className="text-[11px] text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 rounded-lg py-1.5 px-3">
+              <p className="rounded-lg border border-indigo-800/60 bg-indigo-950/60 px-3 py-1.5 text-[11px] text-indigo-300">
                 1回正解カードは「未卒業（8h待機）」へ、2回以上連続正解カードは「卒業推奨」へ更新されました
               </p>
             )}
           </div>
 
-          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex justify-between items-center text-xs">
+          <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400">出題カード数</span>
               <span className="font-mono font-bold text-white">{totalCards} 枚</span>
             </div>
-            <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400">正解</span>
               <span className="font-mono font-bold text-emerald-400">{correctCount} 問</span>
             </div>
-            <div className="flex justify-between items-center text-xs">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400">間違い</span>
               <span className="font-mono font-bold text-rose-400">{incorrectCount} 問</span>
             </div>
-            <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-              <span className="text-slate-300 font-semibold">正答率</span>
-              <span className="font-mono font-bold text-indigo-400 text-sm">{correctRate} %</span>
+            <div className="flex items-center justify-between border-t border-slate-800/80 pt-2 text-xs">
+              <span className="font-semibold text-slate-300">正答率</span>
+              <span className="font-mono text-sm font-bold text-indigo-400">{correctRate} %</span>
             </div>
           </div>
 
           {graduatedNoticeCount !== null && (
-            <div className="text-xs text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 rounded-xl py-2.5 px-3 text-center">
+            <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/60 px-3 py-2.5 text-center text-xs text-emerald-300">
               🎓 {graduatedNoticeCount} 枚の「卒業推奨」カードを共通プール（卒業済）へ移動しました！
             </div>
           )}
@@ -354,12 +350,10 @@ export function LecturePlayer({
                   const count = onGraduateRecommended();
                   setGraduatedNoticeCount(count);
                 }}
-                className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-cyan-600 py-3 text-xs font-bold text-white shadow-lg shadow-cyan-600/30 transition hover:bg-cyan-500"
               >
                 <ArrowUpRightIcon size={14} />
-                <span>
-                  🎓 卒業推奨カードを共通プールへ一括移動 ({recommendedCount}枚)
-                </span>
+                <span>🎓 卒業推奨カードを共通プールへ一括移動 ({recommendedCount}枚)</span>
               </button>
             )}
 
@@ -368,13 +362,13 @@ export function LecturePlayer({
               <>
                 <button
                   onClick={handleRestart}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+                  className="flex-1 cursor-pointer rounded-xl bg-slate-800 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-slate-700"
                 >
                   最初からもう一度
                 </button>
                 <button
                   onClick={handleShuffle}
-                  className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white text-xs font-semibold rounded-xl border border-indigo-500/30 transition cursor-pointer flex items-center justify-center space-x-1.5"
+                  className="flex cursor-pointer items-center justify-center space-x-1.5 rounded-xl border border-indigo-500/30 bg-slate-800 px-3 py-2.5 text-xs font-semibold text-indigo-300 transition hover:bg-slate-700 hover:text-white"
                   title="カードをシャッフルして再開"
                 >
                   <ShuffleIcon size={14} />
@@ -384,7 +378,7 @@ export function LecturePlayer({
             )}
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition cursor-pointer"
+              className="flex-1 cursor-pointer rounded-xl bg-indigo-600 py-2.5 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500"
             >
               終了する
             </button>
@@ -395,21 +389,21 @@ export function LecturePlayer({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col z-50 select-none animate-fadeIn">
+    <div className="animate-fadeIn fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md select-none">
       {/* 演習ヘッダー */}
-      <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+      <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
         <div className="flex items-center space-x-3">
           <span
-            className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
               mode === "TRAINING"
-                ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-                : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : "border-indigo-500/20 bg-indigo-500/10 text-indigo-400"
             }`}
           >
             {headerBadgeText ??
               (mode === "TRAINING" ? "✅ チェックモード (優先度: 3 > 2 > 1)" : "🔁 全問モード")}
           </span>
-          <h2 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md">
+          <h2 className="max-w-xs truncate text-sm font-bold text-white sm:max-w-md">
             {lectureTitle}
           </h2>
         </div>
@@ -420,19 +414,19 @@ export function LecturePlayer({
             type="button"
             onClick={handleShuffle}
             disabled={totalCards <= 1}
-            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white rounded-lg border border-slate-700/60 text-xs font-medium flex items-center space-x-1.5 transition cursor-pointer"
+            className="flex cursor-pointer items-center space-x-1.5 rounded-lg border border-slate-700/60 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             title="カードの並び順をシャッフルして最初から始める"
           >
             <ShuffleIcon size={13} className="text-indigo-400" />
             <span>シャッフル</span>
           </button>
 
-          <span className="text-xs font-mono text-slate-400">
+          <span className="font-mono text-xs text-slate-400">
             {currentIndex + 1} / {totalCards}
           </span>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
             title="演習を中断して戻る (Esc)"
           >
             <XIcon size={18} />
@@ -441,120 +435,113 @@ export function LecturePlayer({
       </header>
 
       {/* プログレスバー */}
-      <div className="w-full bg-slate-800 h-1">
+      <div className="h-1 w-full bg-slate-800">
         <div
-          className="bg-indigo-500 h-1 transition-all duration-300"
+          className="h-1 bg-indigo-500 transition-all duration-300"
           style={{ width: `${((currentIndex + 1) / totalCards) * 100}%` }}
         />
       </div>
 
       {/* メインカード表示領域 */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 max-w-2xl w-full mx-auto">
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center p-4 sm:p-6">
         {/* ボタン系はその場に留まる：カード左上の「戻る」ボタン ＆ ガイド */}
-        <div className="w-full flex items-center justify-between mb-3">
+        <div className="mb-3 flex w-full items-center justify-between">
           <button
             type="button"
             onClick={handlePrev}
             disabled={currentIndex === 0 || slideState !== "idle"}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 hover:text-white text-xs font-medium rounded-lg border border-slate-800 transition cursor-pointer flex items-center space-x-1 shadow-sm"
+            className="flex cursor-pointer items-center space-x-1 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 shadow-sm transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
             title="前のカードに戻る (↑ / Backspace)"
           >
             <span>← 前に戻る</span>
           </button>
 
-          <span className="text-[11px] text-slate-500">
-            カードをクリックしてめくる（Space）
-          </span>
+          <span className="text-[11px] text-slate-500">カードをクリックしてめくる（Space）</span>
         </div>
 
         {/* スライドイン・アウト用ラッパー（カードのみが上下にスライド移動する） */}
         <div
-          className="w-full min-h-80 max-h-120 h-80 sm:h-88 will-change-transform"
+          className="h-80 max-h-120 min-h-80 w-full will-change-transform sm:h-88"
           style={getSlideStyle()}
         >
           {/* ① 3D フリップアニメーション用コンテナ */}
-          <div
-            className="w-full h-full"
-            style={{ perspective: "1000px" }}
-          >
+          <div className="h-full w-full" style={{ perspective: "1000px" }}>
             <div
               onClick={handleFlip}
-              className="relative w-full h-full cursor-pointer"
+              className="relative h-full w-full cursor-pointer"
               style={{
                 transformStyle: "preserve-3d",
-                transition:
-                  slideState === "idle" ? "transform 0.35s ease-in-out" : "none",
+                transition: slideState === "idle" ? "transform 0.35s ease-in-out" : "none",
                 transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
               }}
             >
               {/* 表面 (問題面) — チェック区分 3 / 2 / 1 でカード色を分ける */}
               <div
-                className={`absolute inset-0 rounded-2xl p-7 flex flex-col justify-between shadow-2xl transition-colors border ${
+                className={`absolute inset-0 flex flex-col justify-between rounded-2xl border p-7 shadow-2xl transition-colors ${
                   currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
-                    ? "bg-linear-to-b from-slate-900 to-emerald-950/35 border-emerald-500/60 hover:border-emerald-400/80"
+                    ? "border-emerald-500/60 bg-linear-to-b from-slate-900 to-emerald-950/35 hover:border-emerald-400/80"
                     : currentCard.checkCategory === "PRIORITY_2_UNATTEMPTED"
-                      ? "bg-linear-to-b from-slate-900 to-indigo-950/35 border-indigo-500/60 hover:border-indigo-400/80"
+                      ? "border-indigo-500/60 bg-linear-to-b from-slate-900 to-indigo-950/35 hover:border-indigo-400/80"
                       : currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK"
-                        ? "bg-linear-to-b from-slate-900 to-amber-950/35 border-amber-500/60 hover:border-amber-400/80"
-                        : "bg-slate-900 border-slate-800 hover:border-slate-700"
+                        ? "border-amber-500/60 bg-linear-to-b from-slate-900 to-amber-950/35 hover:border-amber-400/80"
+                        : "border-slate-800 bg-slate-900 hover:border-slate-700"
                 }`}
                 style={{ backfaceVisibility: "hidden" }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
+                    <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
                       表面（問題）
                     </span>
                     {currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED" && (
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-600/60">
+                      <span className="rounded-full border border-emerald-600/60 bg-emerald-950/90 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
                         ③ 定着確認 (連続正解・8h経過)
                       </span>
                     )}
                     {currentCard.checkCategory === "PRIORITY_2_UNATTEMPTED" && (
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-950/90 text-indigo-300 border border-indigo-600/60">
+                      <span className="rounded-full border border-indigo-600/60 bg-indigo-950/90 px-2.5 py-0.5 text-[10px] font-bold text-indigo-300">
                         ② 未実施 (新規挑戦)
                       </span>
                     )}
                     {currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK" && (
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-950/90 text-amber-300 border border-amber-600/60">
+                      <span className="rounded-full border border-amber-600/60 bg-amber-950/90 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">
                         ① 弱点リベンジ (連続正解0)
                       </span>
                     )}
                     {currentCard.badge && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">
                         {currentCard.badge}
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
+                  <span className="font-mono text-[11px] text-indigo-400">
+                    Q.{currentIndex + 1}
+                  </span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-56 flex items-center justify-center">
+                <div className="my-auto flex max-h-56 items-center justify-center overflow-y-auto py-4">
                   <p
-                    className={`font-bold text-white whitespace-pre-wrap leading-relaxed select-text ${
-                      currentCard.front.length > 70 ||
-                      currentCard.front.split("\n").length >= 3
-                        ? "text-base sm:text-lg text-left w-full px-2"
-                        : "text-xl sm:text-2xl text-center"
+                    className={`leading-relaxed font-bold whitespace-pre-wrap text-white select-text ${
+                      currentCard.front.length > 70 || currentCard.front.split("\n").length >= 3
+                        ? "w-full px-2 text-left text-base sm:text-lg"
+                        : "text-center text-xl sm:text-2xl"
                     }`}
                   >
                     {currentCard.front}
                   </p>
                 </div>
 
-                <div className="text-center text-[11px] text-slate-500">
-                  タップして解答を表示
-                </div>
+                <div className="text-center text-[11px] text-slate-500">タップして解答を表示</div>
               </div>
 
               {/* 裏面 (解答面) — チェック区分 3 / 2 / 1 でカード色を分ける */}
               <div
-                className={`absolute inset-0 rounded-2xl p-7 flex flex-col justify-between shadow-2xl transition-colors border ${
+                className={`absolute inset-0 flex flex-col justify-between rounded-2xl border p-7 shadow-2xl transition-colors ${
                   currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
-                    ? "bg-linear-to-b from-slate-900 to-emerald-950/45 border-emerald-400/70"
+                    ? "border-emerald-400/70 bg-linear-to-b from-slate-900 to-emerald-950/45"
                     : currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK"
-                      ? "bg-linear-to-b from-slate-900 to-amber-950/45 border-amber-400/70"
-                      : "bg-linear-to-b from-slate-900 to-indigo-950/40 border-indigo-500/60"
+                      ? "border-amber-400/70 bg-linear-to-b from-slate-900 to-amber-950/45"
+                      : "border-indigo-500/60 bg-linear-to-b from-slate-900 to-indigo-950/40"
                 }`}
                 style={{
                   backfaceVisibility: "hidden",
@@ -562,19 +549,20 @@ export function LecturePlayer({
                 }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="font-semibold uppercase tracking-wider text-[11px] text-indigo-300">
+                  <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase">
                     裏面（解答）
                   </span>
-                  <span className="text-[11px] text-indigo-400 font-mono">A.{currentIndex + 1}</span>
+                  <span className="font-mono text-[11px] text-indigo-400">
+                    A.{currentIndex + 1}
+                  </span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-56 flex items-center justify-center">
+                <div className="my-auto flex max-h-56 items-center justify-center overflow-y-auto py-4">
                   <p
-                    className={`font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text ${
-                      currentCard.back.length > 70 ||
-                      currentCard.back.split("\n").length >= 3
-                        ? "text-sm sm:text-base text-left w-full px-2"
-                        : "text-lg sm:text-xl text-center"
+                    className={`leading-relaxed font-medium whitespace-pre-wrap text-slate-100 select-text ${
+                      currentCard.back.length > 70 || currentCard.back.split("\n").length >= 3
+                        ? "w-full px-2 text-left text-sm sm:text-base"
+                        : "text-center text-lg sm:text-xl"
                     }`}
                   >
                     {currentCard.back}
@@ -590,25 +578,25 @@ export function LecturePlayer({
         </div>
 
         {/* ボタン系（表のときは「解答を表示」1つのボタン、裏のときは「間違い」「正解」の2つのボタン） */}
-        <div className="mt-6 w-full h-13">
+        <div className="mt-6 h-13 w-full">
           {!isFlipped ? (
             <button
               type="button"
               onClick={handleFlip}
               disabled={slideState !== "idle"}
-              className="w-full h-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+              className="flex h-full w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:opacity-60"
               title="解答を表示して裏にする (Space / ← / →)"
             >
               <span>解答を表示</span>
             </button>
           ) : (
-            <div className="w-full h-full grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid h-full w-full grid-cols-2 gap-3 sm:gap-4">
               {/* ③ 間違いを選択して次のカード */}
               <button
                 type="button"
                 onClick={handleIncorrect}
                 disabled={slideState !== "idle"}
-                className="w-full h-full bg-rose-950/60 hover:bg-rose-900/80 disabled:opacity-60 text-rose-300 border border-rose-800/80 text-sm font-bold rounded-xl shadow-lg shadow-rose-950/40 transition cursor-pointer flex items-center justify-center space-x-2"
+                className="flex h-full w-full cursor-pointer items-center justify-center space-x-2 rounded-xl border border-rose-800/80 bg-rose-950/60 text-sm font-bold text-rose-300 shadow-lg shadow-rose-950/40 transition hover:bg-rose-900/80 disabled:opacity-60"
                 title="間違い (← / 1)"
               >
                 <span>❌ 間違い</span>
@@ -619,7 +607,7 @@ export function LecturePlayer({
                 type="button"
                 onClick={handleCorrect}
                 disabled={slideState !== "idle"}
-                className="w-full h-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition cursor-pointer flex items-center justify-center space-x-2"
+                className="flex h-full w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 disabled:opacity-60"
                 title="正解 (→ / 2)"
               >
                 <span>⭕ 正解</span>
@@ -629,18 +617,21 @@ export function LecturePlayer({
         </div>
 
         {/* キーボードショートカットガイド */}
-        <div className="mt-5 text-center text-[11px] text-slate-500 hidden sm:block">
+        <div className="mt-5 hidden text-center text-[11px] text-slate-500 sm:block">
           {!isFlipped ? (
             <span>
-              キー操作: <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd> /{" "}
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> /{" "}
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> 解答を表示
+              キー操作:{" "}
+              <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">Space</kbd> /{" "}
+              <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">←</kbd> /{" "}
+              <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">→</kbd> 解答を表示
             </span>
           ) : (
             <span>
-              キー操作: <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">Space</kbd> 問題に戻す /{" "}
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> 間違い /{" "}
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> 正解
+              キー操作:{" "}
+              <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">Space</kbd>{" "}
+              問題に戻す /{" "}
+              <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">←</kbd> 間違い /{" "}
+              <kbd className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">→</kbd> 正解
             </span>
           )}
         </div>

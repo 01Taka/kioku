@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+
 import { useAppStore } from "../store/useAppStore";
 import { PlayIcon, SlidersIcon } from "./icons";
 
@@ -15,14 +16,7 @@ export function HeaderNav({
   onOpenRecoveryRoom,
   onOpenSettings,
 }: HeaderNavProps) {
-  const {
-    cards,
-    courses,
-    lectures,
-    settings,
-    sessionState,
-    getCommonPoolQueue,
-  } = useAppStore();
+  const { cards, courses, lectures, settings, sessionState, getCommonPoolQueue } = useAppStore();
 
   const queueSummary = useMemo(() => {
     return getCommonPoolQueue();
@@ -30,9 +24,7 @@ export function HeaderNav({
 
   const mistakeCount = useMemo(() => {
     const mistakeSet = new Set(sessionState.todayMistakeCardIds);
-    return cards.filter(
-      (c) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED",
-    ).length;
+    return cards.filter((c) => mistakeSet.has(c.id) && c.lecturePool.phase === "GRADUATED").length;
   }, [cards, sessionState.todayMistakeCardIds]);
 
   const recoveryCount = queueSummary.recoveryCards.length;
@@ -58,18 +50,16 @@ export function HeaderNav({
   }, [queueSummary]);
 
   return (
-    <header className="h-14 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between flex-shrink-0 select-none">
+    <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 select-none sm:px-6">
       {/* 左側: ブランドロゴ & システム概要 */}
       <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-base">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-indigo-500/40 bg-indigo-600/20 text-base">
           🧠
         </div>
         <div>
           <div className="flex items-center space-x-2">
-            <span className="font-bold text-sm text-white tracking-tight">
-              Kioku
-            </span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300 border border-slate-700 font-medium hidden md:inline">
+            <span className="text-sm font-bold tracking-tight text-white">Kioku</span>
+            <span className="hidden rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-indigo-300 md:inline">
               2段階キュー × FSRS 長期記憶システム
             </span>
           </div>
@@ -77,18 +67,18 @@ export function HeaderNav({
       </div>
 
       {/* 右側: グローバルナビゲーション・アクションボタン群 */}
-      <div className="flex items-center space-x-2 sm:space-x-2.5 text-xs">
+      <div className="flex items-center space-x-2 text-xs sm:space-x-2.5">
         {/* 1. 今日の共通プール復習（10問マイクロセッション + 3色内訳ピル） */}
-        <div className="flex items-center rounded-xl bg-slate-950/90 border border-emerald-600/50 p-0.5 shadow-md shadow-emerald-950/40">
+        <div className="flex items-center rounded-xl border border-emerald-600/50 bg-slate-950/90 p-0.5 shadow-md shadow-emerald-950/40">
           <button
             type="button"
             onClick={onOpenCommonSession}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center space-x-1.5 transition cursor-pointer"
+            className="flex cursor-pointer items-center space-x-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-white transition hover:bg-emerald-500"
             title="卒業済みカードの共通プール復習（10問マイクロセッション）を開始"
           >
             <PlayIcon size={12} />
             <span>🎯 今日の共通復習</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-emerald-900/90 text-emerald-100 font-mono text-[11px]">
+            <span className="py-0.2 rounded-full bg-emerald-900/90 px-1.5 font-mono text-[11px] text-emerald-100">
               {totalDueCount > 0
                 ? `${totalDueCount}枚`
                 : sessionBatchCount > 0
@@ -103,21 +93,21 @@ export function HeaderNav({
             colorBreakdown.earlyCount > 0) && (
             <div
               onClick={onOpenCommonSession}
-              className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 text-[11px] font-mono cursor-pointer"
+              className="hidden cursor-pointer items-center space-x-1.5 px-2.5 py-1 font-mono text-[11px] sm:flex"
               title={`本日のキュー内訳 — 🔁リベンジ: ${colorBreakdown.retryCount}枚 / 🎯期日到来: ${colorBreakdown.dueCount}枚 / ⚡先取り補充: ${colorBreakdown.earlyCount}枚`}
             >
               {colorBreakdown.retryCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                <span className="py-0.2 rounded border border-amber-500/40 bg-amber-500/20 px-1.5 font-bold text-amber-300">
                   🔁{colorBreakdown.retryCount}
                 </span>
               )}
               {colorBreakdown.dueCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                <span className="py-0.2 rounded border border-emerald-500/40 bg-emerald-500/20 px-1.5 font-bold text-emerald-300">
                   🎯{colorBreakdown.dueCount}
                 </span>
               )}
               {colorBreakdown.earlyCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold">
+                <span className="py-0.2 rounded border border-purple-500/40 bg-purple-500/20 px-1.5 font-bold text-purple-300">
                   ⚡{colorBreakdown.earlyCount}
                 </span>
               )}
@@ -129,16 +119,16 @@ export function HeaderNav({
         <button
           type="button"
           onClick={onOpenTodayMistakes}
-          className={`px-3 py-1.5 rounded-xl border font-medium flex items-center space-x-1.5 transition cursor-pointer ${
+          className={`flex cursor-pointer items-center space-x-1.5 rounded-xl border px-3 py-1.5 font-medium transition ${
             mistakeCount > 0
-              ? "bg-amber-950/50 hover:bg-amber-900/60 text-amber-200 border-amber-700/60"
-              : "bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700/60"
+              ? "border-amber-700/60 bg-amber-950/50 text-amber-200 hover:bg-amber-900/60"
+              : "border-slate-700/60 bg-slate-800/80 text-slate-300 hover:bg-slate-800"
           }`}
           title="本日の午前04:00以降に共通プールで間違えた問題の確認・一括降格"
         >
           <span>📝 今日のミス</span>
           {mistakeCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-mono font-bold text-[10px]">
+            <span className="py-0.2 rounded-full bg-amber-500 px-1.5 font-mono text-[10px] font-bold text-slate-950">
               {mistakeCount}
             </span>
           )}
@@ -148,16 +138,16 @@ export function HeaderNav({
         <button
           type="button"
           onClick={onOpenRecoveryRoom}
-          className={`px-3 py-1.5 rounded-xl border font-medium flex items-center space-x-1.5 transition cursor-pointer ${
+          className={`flex cursor-pointer items-center space-x-1.5 rounded-xl border px-3 py-1.5 font-medium transition ${
             recoveryCount > 0
-              ? "bg-rose-950/60 hover:bg-rose-900/70 text-rose-200 border-rose-700/70 animate-pulse"
-              : "bg-slate-800/80 hover:bg-slate-800 text-slate-300 border-slate-700/60"
+              ? "animate-pulse border-rose-700/70 bg-rose-950/60 text-rose-200 hover:bg-rose-900/70"
+              : "border-slate-700/60 bg-slate-800/80 text-slate-300 hover:bg-slate-800"
           }`}
           title="想起確率 R < 35% に低下したカードの救済トリアージ室（放置カードの一括整理）"
         >
           <span>🏥 リカバリー室</span>
           {recoveryCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px]">
+            <span className="py-0.2 rounded-full bg-rose-500 px-1.5 font-mono text-[10px] font-bold text-white">
               {recoveryCount}
             </span>
           )}
@@ -167,7 +157,7 @@ export function HeaderNav({
         <button
           type="button"
           onClick={onOpenSettings}
-          className="p-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700/60 transition cursor-pointer"
+          className="cursor-pointer rounded-xl border border-slate-700/60 bg-slate-800/80 p-2 text-slate-300 transition hover:bg-slate-700 hover:text-white"
           title="FSRS設定・JSONバックアップと復元"
         >
           <SlidersIcon size={15} />

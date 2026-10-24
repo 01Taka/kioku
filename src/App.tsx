@@ -1,16 +1,17 @@
-import { useState, useEffect } from "react";
+import { useEffect,useState } from "react";
+
+import { HomeView } from "./components/home/HomeView";
+import { SettingsIcon } from "./components/icons";
+import { CourseDetailView } from "./components/materials/CourseDetailView";
+import { CourseListView } from "./components/materials/CourseListView";
 import {
   DesktopSidebar,
+  type HomeSubTab,
   MobileBottomNav,
   type NavCategory,
-  type HomeSubTab,
 } from "./components/navigation/AppNavigation";
-import { HomeView } from "./components/home/HomeView";
-import { CourseListView } from "./components/materials/CourseListView";
-import { CourseDetailView } from "./components/materials/CourseDetailView";
 import { CommonPoolSessionModal } from "./components/session/CommonPoolSessionModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
-import { SettingsIcon } from "./components/icons";
 import { useAppStore } from "./store/useAppStore";
 
 export default function App() {
@@ -46,9 +47,9 @@ export default function App() {
   }, [syncDailyCutoff]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans antialiased text-slate-100">
+    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100 antialiased">
       {/* PC版: 左固定サイドバー */}
-      <div className="hidden md:flex h-full">
+      <div className="hidden h-full md:flex">
         <DesktopSidebar
           currentCategory={currentCategory}
           onSelectCategory={(cat) => {
@@ -63,20 +64,20 @@ export default function App() {
       </div>
 
       {/* メインコンテンツエリア */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden pb-14 md:pb-0">
+      <div className="flex h-full flex-1 flex-col overflow-hidden pb-14 md:pb-0">
         {/* スマホ版専用トップバー (ヘッダー端に設定アイコン) */}
-        <header className="md:hidden flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800">
+        <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2.5 md:hidden">
           <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-600 text-xs font-bold text-white shadow">
               K
             </div>
-            <span className="font-bold text-sm text-white">Kioku</span>
+            <span className="text-sm font-bold text-white">Kioku</span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
             title="設定"
           >
             <SettingsIcon size={18} />
@@ -84,7 +85,7 @@ export default function App() {
         </header>
 
         {/* 画面コンテンツのルーティング */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
+        <main className="flex h-full flex-1 flex-col overflow-hidden">
           {currentCategory === "HOME" ? (
             <HomeView
               activeSubTab={homeSubTab}
@@ -97,9 +98,7 @@ export default function App() {
               onBackToCourseList={() => setSelectedCourseId(null)}
             />
           ) : (
-            <CourseListView
-              onSelectCourse={(courseId) => setSelectedCourseId(courseId)}
-            />
+            <CourseListView onSelectCourse={(courseId) => setSelectedCourseId(courseId)} />
           )}
         </main>
       </div>
@@ -124,9 +123,7 @@ export default function App() {
       )}
 
       {/* 設定・データバックアップ モーダル */}
-      {isSettingsOpen && (
-        <SettingsModal onClose={() => setIsSettingsOpen(false)} />
-      )}
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import { ArrowLeftIcon, EditIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
@@ -20,7 +20,6 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     settings,
     addLecture,
     deleteLecture,
-    getLectureProgress,
     getLectureTrainingQueue,
     answerLectureTrainingCard,
     graduateRecommendedCardsInLecture,
@@ -60,6 +59,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     cards: PracticeCardItem[];
     recommendedCount: number;
     lectureIdForGraduation?: string;
+    currentLectureId?: string;
   } | null>(null);
 
   // リアルタイム時間更新用タイマー (30秒ごと)
@@ -83,39 +83,52 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
 
   const selectedCheckLecture = courseLectures.find((l) => l.id === selectedCheckLectureId);
 
-  const checkProgress = selectedCheckLectureId ? getLectureProgress(selectedCheckLectureId) : null;
+  // 指定した講義IDのチェック演習を開始する（最大10問）
+  const startCheckSessionForLecture = useCallback(
+    (lectureId: string) => {
+      const queue = getLectureTrainingQueue(lectureId, settings.waitingDurationHours, new Date());
+      if (queue.items.length === 0) return;
+
+      const targetLecture = courseLectures.find((l) => l.id === lectureId);
+      const batchItems = queue.items.slice(0, 10);
+
+      setPracticeSession({
+        mode: "TRAINING",
+        title: `${course?.name} - ${targetLecture?.name} (チェック)`,
+        currentLectureId: lectureId,
+        cards: batchItems.map((item) => {
+          const c = item.card;
+          const badge =
+            item.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
+              ? c.lecturePool.phase === "GRADUATION_RECOMMENDED"
+                ? `卒業推奨 (連続${c.lecturePool.consecutiveCorrect}回正解)`
+                : `未卒業 (連続${c.lecturePool.consecutiveCorrect}回正解 → 正解で卒業推奨)`
+              : item.checkCategory === "PRIORITY_2_UNATTEMPTED"
+                ? "未実施 (初回チャレンジ)"
+                : "未卒業 (連続正解0・リベンジ)";
+          return {
+            id: c.id,
+            front: c.front,
+            back: c.back,
+            checkCategory: item.checkCategory,
+            badge,
+          };
+        }),
+        recommendedCount: 0,
+        lectureIdForGraduation: lectureId,
+      });
+    },
+    [course?.name, courseLectures, getLectureTrainingQueue, settings.waitingDurationHours],
+  );
 
   // ① チェックタブ: はじめる実行
   const handleStartCheck = () => {
-    if (!checkTrainingQueue || checkTrainingQueue.items.length === 0) return;
-    setPracticeSession({
-      mode: "TRAINING",
-      title: `${course?.name} - ${selectedCheckLecture?.name} (チェック)`,
-      cards: checkTrainingQueue.items.map((item) => {
-        const c = item.card;
-        const badge =
-          item.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
-            ? c.lecturePool.phase === "GRADUATION_RECOMMENDED"
-              ? `卒業推奨 (連続${c.lecturePool.consecutiveCorrect}回正解)`
-              : `未卒業 (連続${c.lecturePool.consecutiveCorrect}回正解 → 正解で卒業推奨)`
-            : item.checkCategory === "PRIORITY_2_UNATTEMPTED"
-              ? "未実施 (初回チャレンジ)"
-              : "未卒業 (連続正解0・リベンジ)";
-        return {
-          id: c.id,
-          front: c.front,
-          back: c.back,
-          checkCategory: item.checkCategory,
-          badge,
-        };
-      }),
-      recommendedCount: checkProgress?.graduationRecommendedCount ?? 0,
-      lectureIdForGraduation: selectedCheckLectureId || undefined,
-    });
+    if (!selectedCheckLectureId) return;
+    startCheckSessionForLecture(selectedCheckLectureId);
   };
 
-  // ② 復習タブ: はじめる実行（複数講義の全問シャッフル）
-  const handleStartReview = () => {
+  // ② 復習タブ: はじめる実行（複数講義の全問シャッフルから最大10問）
+  const handleStartReview = useCallback(() => {
     const targetCards = cards.filter(
       (c) => selectedReviewLectureIds.has(c.lectureId) && !c.isSuspended,
     );
@@ -123,11 +136,12 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
 
     // シャッフル
     const shuffled = [...targetCards].sort(() => Math.random() - 0.5);
+    const batchCards = shuffled.slice(0, 10);
 
     setPracticeSession({
       mode: "FREE_PRACTICE",
-      title: `${course?.name} - 複数講義の全問復習 (${targetCards.length}枚)`,
-      cards: shuffled.map((c) => ({
+      title: `${course?.name} - 全問復習`,
+      cards: batchCards.map((c) => ({
         id: c.id,
         front: c.front,
         back: c.back,
@@ -142,7 +156,82 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
       })),
       recommendedCount: 0,
     });
-  };
+  }, [cards, selectedReviewLectureIds, course?.name]);
+
+  // 結果画面用のメインアクション算出
+  const getMainActionForSession = useCallback(() => {
+    if (!practiceSession) return undefined;
+
+    if (practiceSession.mode === "TRAINING") {
+      const currentLectureId = practiceSession.currentLectureId || selectedCheckLectureId;
+      if (!currentLectureId) return undefined;
+
+      // 1. 同じ教材（同じ講義）内でまだチェック対象がある場合
+      const currentQueue = getLectureTrainingQueue(
+        currentLectureId,
+        settings.waitingDurationHours,
+        new Date(),
+      );
+      if (currentQueue.items.length > 0) {
+        const count = Math.min(10, currentQueue.items.length);
+        return {
+          label: count === 10 ? "次の10問" : `次の${count}問`,
+          onClick: () => {
+            startCheckSessionForLecture(currentLectureId);
+          },
+        };
+      }
+
+      // 2. 同じ科目内の他の教材（他の講義）にチェック対象がある場合
+      const otherLectures = courseLectures.filter((l) => l.id !== currentLectureId);
+      for (const otherL of otherLectures) {
+        const otherQueue = getLectureTrainingQueue(
+          otherL.id,
+          settings.waitingDurationHours,
+          new Date(),
+        );
+        if (otherQueue.items.length > 0) {
+          const count = Math.min(10, otherQueue.items.length);
+          return {
+            label: `${otherL.name}のチェックを開始（${count}問）`,
+            onClick: () => {
+              setSelectedCheckLectureId(otherL.id);
+              startCheckSessionForLecture(otherL.id);
+            },
+          };
+        }
+      }
+
+      // 3. どちらもない場合
+      return {
+        label: "完了",
+        isComplete: true,
+        onClick: () => {
+          setPracticeSession(null);
+        },
+      };
+    }
+
+    if (practiceSession.mode === "FREE_PRACTICE") {
+      // 教材の復習: 「次の10問」 (ランダムで同じ教材内で10問選択)
+      return {
+        label: "次の10問",
+        onClick: () => {
+          handleStartReview();
+        },
+      };
+    }
+
+    return undefined;
+  }, [
+    practiceSession,
+    selectedCheckLectureId,
+    getLectureTrainingQueue,
+    settings.waitingDurationHours,
+    courseLectures,
+    startCheckSessionForLecture,
+    handleStartReview,
+  ]);
 
   // 新規講義作成
   const handleCreateLecture = (e: React.FormEvent) => {
@@ -542,6 +631,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
           lectureTitle={practiceSession.title}
           mode={practiceSession.mode}
           cards={practiceSession.cards}
+          mainAction={getMainActionForSession()}
           onAnswer={(cardId, result) => {
             if (practiceSession.mode === "TRAINING") {
               answerLectureTrainingCard(cardId, result);

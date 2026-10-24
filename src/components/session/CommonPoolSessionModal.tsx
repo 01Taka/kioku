@@ -4,8 +4,8 @@ import { useAppStore } from "../../store/useAppStore";
 import { REVIEW_CATEGORY_THEME } from "../../types/schema";
 import { formatFutureDueNotice } from "../../utils/dateUtils";
 import type { CommonPoolQueueItem } from "../../utils/queueBuilder";
-import { PlayIcon, UndoIcon, XIcon } from "../icons";
-import { TodayMistakesSection } from "./TodayMistakesView";
+import { UndoIcon, XIcon } from "../icons";
+import { PracticeResultView } from "../practice/PracticeResultView";
 
 export interface CommonPoolSessionModalProps {
   onClose: () => void;
@@ -31,7 +31,8 @@ export function CommonPoolSessionModal({
   const [isFlipped, setIsFlipped] = useState(false);
   const [isBreakScreen, setIsBreakScreen] = useState(false);
   const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
-  const [sessionStats, setSessionStats] = useState({
+  const [batchAnswers, setBatchAnswers] = useState<Record<string, "GOOD" | "AGAIN">>({});
+  const [_sessionStats, setSessionStats] = useState({
     goodCount: 0,
     againCount: 0,
     completedBatches: 0,
@@ -48,6 +49,7 @@ export function CommonPoolSessionModal({
     setCurrentIndex(0);
     setIsFlipped(false);
     setIsBreakScreen(false);
+    setBatchAnswers({});
     setSlideState("idle");
   }, [getCommonPoolQueue]);
 
@@ -75,6 +77,7 @@ export function CommonPoolSessionModal({
 
       // FSRS 計算・当日回答記録・オレンジフラグ更新
       answerCommonPoolCard(currentItem.card.id, rating);
+      setBatchAnswers((prev) => ({ ...prev, [currentItem.card.id]: rating }));
 
       setSessionStats((prev) => ({
         ...prev,
@@ -243,85 +246,66 @@ export function CommonPoolSessionModal({
   if (isBreakScreen) {
     const nextQueuePreview = getCommonPoolQueue();
     const nextAvailableCount = nextQueuePreview.sessionBatch.length;
-    const totalAnswered = sessionStats.goodCount + sessionStats.againCount;
-    const goodRate =
-      totalAnswered > 0 ? Math.round((sessionStats.goodCount / totalAnswered) * 100) : 0;
+
+    const incorrectItems = batchItems.filter((i) => batchAnswers[i.card.id] === "AGAIN");
+    const correctItems = batchItems.filter((i) => batchAnswers[i.card.id] === "GOOD");
+
+    const incorrectCards = incorrectItems.map((item) => ({
+      id: item.card.id,
+      front: item.card.front,
+      back: item.card.back,
+      badge:
+        item.reviewCategory === "RETRY"
+          ? "🔁 リトライ"
+          : item.reviewCategory === "DUE"
+            ? "⭕ 本日期日"
+            : "⏩ 先取り",
+    }));
+
+    const correctCards = correctItems.map((item) => ({
+      id: item.card.id,
+      front: item.card.front,
+      back: item.card.back,
+      badge:
+        item.reviewCategory === "RETRY"
+          ? "🔁 リトライ"
+          : item.reviewCategory === "DUE"
+            ? "⭕ 本日期日"
+            : "⏩ 先取り",
+    }));
+
+    const handleReviewMistakes = () => {
+      if (incorrectItems.length === 0) return;
+      setBatchItems(incorrectItems);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      setBatchAnswers({});
+      setIsBreakScreen(false);
+      setSlideState("idle");
+    };
 
     return (
-      <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/95 p-4 backdrop-blur-md">
-        <div className="my-auto w-full max-w-2xl space-y-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-          <div className="flex items-start justify-between border-b border-slate-800 pb-4">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">☕</span>
-                <h2 className="text-lg font-bold text-white">
-                  10問マイクロセッション完了！（ブレイク画面）
-                </h2>
-              </div>
-              <p className="text-xs text-slate-400">
-                いつでもここで気持ちよく学習を終了できます。余力があれば次のセットへ進みましょう。
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-            >
-              <XIcon size={18} />
-            </button>
-          </div>
-
-          {/* セッション統計サマリー */}
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-              <span className="block text-[11px] text-slate-400">今回の累計回答</span>
-              <strong className="font-mono text-lg text-white">{totalAnswered} 問</strong>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-              <span className="block text-[11px] text-emerald-400">⭕ Good (正解)</span>
-              <strong className="font-mono text-lg text-emerald-300">
-                {sessionStats.goodCount} 問 ({goodRate}%)
-              </strong>
-            </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-              <span className="block text-[11px] text-amber-400">🔁 Again (翌日リベンジ)</span>
-              <strong className="font-mono text-lg text-amber-300">
-                {sessionStats.againCount} 問
-              </strong>
-            </div>
-          </div>
-
-          {/* 今日間違えた問題ハブ（埋め込み） */}
-          <div className="border-t border-slate-800 pt-4">
-            <TodayMistakesSection compact />
-          </div>
-
-          {/* アクション選択（もう10問続ける / ここで終了する） */}
-          <div className="flex flex-col items-center gap-3 border-t border-slate-800 pt-2 sm:flex-row">
-            {nextAvailableCount > 0 && (
-              <button
-                type="button"
-                onClick={loadNextBatch}
-                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 sm:flex-1"
-              >
-                <PlayIcon size={13} />
-                <span>
-                  もう {nextAvailableCount} 問続ける
-                  {nextQueuePreview.totalRemainingCount > 0
-                    ? `（本日対象残り ${nextQueuePreview.totalRemainingCount} 枚）`
-                    : "（先取り補充枠）"}
-                </span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full cursor-pointer rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 sm:flex-1"
-            >
-              ここで終了する
-            </button>
-          </div>
-        </div>
-      </div>
+      <PracticeResultView
+        title="本日の復習 (共通プール)"
+        totalCount={batchItems.length}
+        correctCount={correctCards.length}
+        incorrectCards={incorrectCards}
+        correctCards={correctCards}
+        mainAction={
+          nextAvailableCount > 0
+            ? {
+                label: "次の10問",
+                onClick: loadNextBatch,
+              }
+            : {
+                label: "完了",
+                isComplete: true,
+                onClick: onClose,
+              }
+        }
+        onReviewMistakes={incorrectCards.length > 0 ? handleReviewMistakes : undefined}
+        onClose={onClose}
+      />
     );
   }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LectureCheckCategory } from "../../types/schema";
 import { ShuffleIcon, XIcon } from "../icons";
+import { PracticeResultView } from "./PracticeResultView";
 
 export interface PracticeCardItem {
   id: string;
@@ -30,6 +31,12 @@ export interface LecturePlayerProps {
   onAnswer?: (cardId: string, result: "correct" | "incorrect") => void;
   /** 全問終了時の通知コールバック */
   onFinish?: (results: Record<string, "correct" | "incorrect">) => void;
+  /** 結果画面のメインアクションボタン（「次の10問」「2周目開始」「別講義チェック開始」「完了」など） */
+  mainAction?: {
+    label: string;
+    onClick: () => void;
+    isComplete?: boolean;
+  };
   /** 閉じる */
   onClose: () => void;
 }
@@ -43,10 +50,11 @@ export function LecturePlayer({
   mode = "FREE_PRACTICE",
   headerBadgeText,
   recommendedCount: _recommendedCount = 0,
-  onGraduateRecommended,
+  onGraduateRecommended: _onGraduateRecommended,
   onGraduateSelected,
   onAnswer,
   onFinish,
+  mainAction,
   onClose,
 }: LecturePlayerProps) {
   const [activeCards, setActiveCards] = useState<PracticeCardItem[]>(cards);
@@ -56,7 +64,6 @@ export function LecturePlayer({
   const [isCompleted, setIsCompleted] = useState(false);
   const [isShowingMistakesReview, setIsShowingMistakesReview] = useState(false);
   const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
-  const [graduatedNoticeCount, setGraduatedNoticeCount] = useState<number | null>(null);
   // 新しく卒業対象（正解したカード）の選択状態（デフォルト全選択）
   const [selectedGraduationIds, setSelectedGraduationIds] = useState<Set<string>>(new Set());
 
@@ -202,16 +209,6 @@ export function LecturePlayer({
     }, 160);
   }, [currentIndex, slideState]);
 
-  // 最初からやり直す
-  const handleRestart = () => {
-    setCurrentIndex(0);
-    setIsFlipped(false);
-    setAnswers({});
-    setIsCompleted(false);
-    setIsShowingMistakesReview(false);
-    setSlideState("idle");
-  };
-
   // キーボード操作対応
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -299,6 +296,48 @@ export function LecturePlayer({
         };
     }
   };
+
+  // 卒業トグルハンドラ
+  const handleToggleGraduationId = useCallback((cardId: string) => {
+    setSelectedGraduationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  }, []);
+
+  // 卒業確定を行ってから閉じる
+  const handleCloseWithGraduation = useCallback(() => {
+    if (mode === "TRAINING" && selectedGraduationIds.size > 0 && onGraduateSelected) {
+      onGraduateSelected(Array.from(selectedGraduationIds));
+    }
+    onClose();
+  }, [mode, selectedGraduationIds, onGraduateSelected, onClose]);
+
+  // 卒業確定を行ってからメインアクションを実行
+  const handleMainActionWithGraduation = useCallback(() => {
+    if (mode === "TRAINING" && selectedGraduationIds.size > 0 && onGraduateSelected) {
+      onGraduateSelected(Array.from(selectedGraduationIds));
+    }
+    mainAction?.onClick();
+  }, [mode, selectedGraduationIds, onGraduateSelected, mainAction]);
+
+  // 結果画面の「n問を復習」実行
+  const handleReviewMistakes = useCallback(() => {
+    const incorrectCards = activeCards.filter((c) => answers[c.id] === "incorrect");
+    if (incorrectCards.length === 0) return;
+    setActiveCards(incorrectCards);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setAnswers({});
+    setIsShowingMistakesReview(false);
+    setIsCompleted(false);
+    setSlideState("idle");
+  }, [activeCards, answers]);
 
   // カードが0枚の場合
   if (totalCards === 0) {
@@ -432,191 +471,38 @@ export function LecturePlayer({
 
   // 演習完了リザルト画面
   if (isCompleted) {
-    const correctCount = Object.values(answers).filter((a) => a === "correct").length;
+    const incorrectCards = activeCards.filter((c) => answers[c.id] === "incorrect");
+    const allCorrectCards = activeCards.filter((c) => answers[c.id] === "correct");
+    const correctCount = allCorrectCards.length;
 
-    // 今回正解して卒業対象候補となったカード一覧（チェックモード時）
-    const correctCards = activeCards.filter((c) => answers[c.id] === "correct");
-    const hasGraduationCandidates = mode === "TRAINING" && correctCards.length > 0;
-    const selectedCount = selectedGraduationIds.size;
+    // 教材チェック（mode === "TRAINING"）の場合、正解カードは卒業対象候補とする
+    const graduationCards =
+      mode === "TRAINING" && allCorrectCards.length > 0 ? allCorrectCards : undefined;
+    // 卒業対象以外の正解カード（チェック時は卒業セクションに集約するため空）
+    const displayCorrectCards = mode === "TRAINING" ? [] : allCorrectCards;
 
     return (
-      <div className="animate-fadeIn fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md select-none">
-        {/* 上部ヘッダー（固定）: 科目 - 講義 / 正解数 / 問題数 */}
-        <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-6 py-4">
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-bold text-white sm:text-base">{lectureTitle}</h2>
-            <p className="font-mono text-xs text-slate-400">
-              結果: <strong className="text-emerald-400">{correctCount}</strong> / {totalCards} 正解
-            </p>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-            title="閉じる"
-          >
-            <XIcon size={18} />
-          </button>
-        </header>
-
-        {/* メインスクロール領域: 問題リスト */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 pb-24 sm:px-6">
-          <div className="mx-auto max-w-2xl space-y-4">
-            {graduatedNoticeCount !== null && (
-              <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/60 px-4 py-3 text-center text-xs text-emerald-300">
-                🎓 {graduatedNoticeCount} 枚のカードを共通プール（卒業済）へ移動しました！
-              </div>
-            )}
-
-            {/* 問題リストヘッダー */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">
-                出題問題一覧 ({totalCards}問)
-              </span>
-
-              {hasGraduationCandidates && graduatedNoticeCount === null && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedCount === correctCards.length) {
-                      setSelectedGraduationIds(new Set());
-                    } else {
-                      setSelectedGraduationIds(new Set(correctCards.map((c) => c.id)));
-                    }
-                  }}
-                  className="cursor-pointer text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  {selectedCount === correctCards.length ? "全選択解除" : "正解を全選択"}
-                </button>
-              )}
-            </div>
-
-            {/* 問題リスト本体 */}
-            <div className="space-y-2">
-              {activeCards.map((card, idx) => {
-                const isCorrect = answers[card.id] === "correct";
-                const isChecked = selectedGraduationIds.has(card.id);
-
-                return (
-                  <div
-                    key={card.id}
-                    onClick={() => {
-                      if (!hasGraduationCandidates || !isCorrect || graduatedNoticeCount !== null)
-                        return;
-                      const next = new Set(selectedGraduationIds);
-                      if (isChecked) {
-                        next.delete(card.id);
-                      } else {
-                        next.add(card.id);
-                      }
-                      setSelectedGraduationIds(next);
-                    }}
-                    className={`flex items-start justify-between gap-3 rounded-xl border p-3.5 transition ${
-                      isCorrect
-                        ? isChecked
-                          ? "border-emerald-500/80 bg-emerald-950/30"
-                          : "border-slate-800 bg-slate-900/80"
-                        : "border-rose-950/40 bg-rose-950/15"
-                    } ${hasGraduationCandidates && isCorrect && graduatedNoticeCount === null ? "cursor-pointer hover:border-emerald-500/60" : ""}`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {/* 卒業選択チェックボックス（正解カードのみ選択可能） */}
-                      {hasGraduationCandidates && graduatedNoticeCount === null && (
-                        <div className="pt-0.5">
-                          {isCorrect ? (
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => {}} // 親divクリックで処理
-                              className="cursor-pointer rounded accent-emerald-500"
-                            />
-                          ) : (
-                            <div className="h-3.5 w-3.5" />
-                          )}
-                        </div>
-                      )}
-
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2 text-[11px]">
-                          <span className="font-mono text-slate-500">Q{idx + 1}.</span>
-                          <span
-                            className={`py-0.2 rounded-full px-2 text-[10px] font-bold ${
-                              isCorrect
-                                ? "border border-emerald-800/80 bg-emerald-950/80 text-emerald-300"
-                                : "border border-rose-800/80 bg-rose-950/80 text-rose-300"
-                            }`}
-                          >
-                            {isCorrect ? "⭕ 正解" : "❌ 不正解"}
-                          </span>
-                          {card.badge && <span className="text-slate-400">({card.badge})</span>}
-                        </div>
-
-                        <p className="text-xs font-medium whitespace-pre-wrap text-slate-100">
-                          {card.front}
-                        </p>
-                        <p className="text-xs whitespace-pre-wrap text-slate-400">{card.back}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* 画面下部に fixed のフッターボタン */}
-        <footer className="fixed right-0 bottom-0 left-0 z-10 border-t border-slate-800 bg-slate-900/95 p-4 backdrop-blur">
-          <div className="mx-auto flex max-w-md items-center justify-center space-x-3">
-            {mode === "FREE_PRACTICE" && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleRestart}
-                  className="flex-1 cursor-pointer rounded-xl bg-slate-800 py-3 text-xs font-semibold text-slate-200 transition hover:bg-slate-700"
-                >
-                  最初からもう一度
-                </button>
-                <button
-                  type="button"
-                  onClick={handleShuffle}
-                  className="flex cursor-pointer items-center justify-center space-x-1.5 rounded-xl border border-indigo-500/30 bg-slate-800 px-4 py-3 text-xs font-semibold text-indigo-300 transition hover:bg-slate-700 hover:text-white"
-                >
-                  <ShuffleIcon size={14} />
-                  <span>シャッフル</span>
-                </button>
-              </>
-            )}
-
-            {/* 卒業対象に新しくなった問題がある場合: 終了が「n問を卒業」ボタンに変わる */}
-            {hasGraduationCandidates && graduatedNoticeCount === null && selectedCount > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  const targetIds = Array.from(selectedGraduationIds);
-                  if (onGraduateSelected) {
-                    const count = onGraduateSelected(targetIds);
-                    setGraduatedNoticeCount(count);
-                  } else if (onGraduateRecommended) {
-                    const count = onGraduateRecommended();
-                    setGraduatedNoticeCount(count);
-                  }
-                }}
-                className="flex-1 cursor-pointer rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500"
-              >
-                🎓 {selectedCount}問を卒業
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 cursor-pointer rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500"
-              >
-                終了する
-              </button>
-            )}
-          </div>
-        </footer>
-      </div>
+      <PracticeResultView
+        title={lectureTitle}
+        totalCount={totalCards}
+        correctCount={correctCount}
+        incorrectCards={incorrectCards}
+        correctCards={displayCorrectCards}
+        graduationCards={graduationCards}
+        selectedGraduationIds={selectedGraduationIds}
+        onToggleGraduationId={handleToggleGraduationId}
+        mainAction={
+          mainAction
+            ? {
+                label: mainAction.label,
+                onClick: handleMainActionWithGraduation,
+                isComplete: mainAction.isComplete,
+              }
+            : undefined
+        }
+        onReviewMistakes={incorrectCards.length > 0 ? handleReviewMistakes : undefined}
+        onClose={handleCloseWithGraduation}
+      />
     );
   }
 

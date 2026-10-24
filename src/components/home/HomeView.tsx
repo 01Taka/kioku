@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import { PlayIcon, UndoIcon } from "../icons";
@@ -24,6 +24,8 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
 
   // ミス特訓プレイヤー状態
   const [practiceCards, setPracticeCards] = useState<PracticeCardItem[] | null>(null);
+  // 現在ミスした状態のままで終わっているカードIDセット
+  const [unresolvedMistakeIds, setUnresolvedMistakeIds] = useState<Set<string>>(new Set());
 
   // 忘れかけ: チェックボックス選択状態
   const [selectedForgottenIds, setSelectedForgottenIds] = useState<Set<string>>(new Set());
@@ -44,21 +46,83 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
   const lectureMap = useMemo(() => new Map(lectures.map((l) => [l.id, l.name])), [lectures]);
 
   // 今日のミス特訓開始ハンドラ
-  const handleStartMistakesPractice = (count: number | "ALL") => {
-    const targetCards = count === "ALL" ? mistakeCards : mistakeCards.slice(0, count);
-    if (targetCards.length === 0) return;
+  const handleStartMistakesPractice = useCallback(
+    (count: number | "ALL") => {
+      const targetCards = count === "ALL" ? mistakeCards : mistakeCards.slice(0, count);
+      if (targetCards.length === 0) return;
 
-    setPracticeCards(
-      targetCards.map((c) => ({
-        id: c.id,
-        front: c.front,
-        back: c.back,
-        badge: c.commonPool?.consecutiveFailCount
-          ? `⚠️ ${c.commonPool.consecutiveFailCount}連続ミス`
-          : "今日のミス",
-      })),
-    );
-  };
+      // 初回開始時は、今回の対象カードを未解決ミスとして追跡開始
+      setUnresolvedMistakeIds(new Set(targetCards.map((c) => c.id)));
+
+      setPracticeCards(
+        targetCards.map((c) => ({
+          id: c.id,
+          front: c.front,
+          back: c.back,
+          badge: c.commonPool?.consecutiveFailCount
+            ? `⚠️ ${c.commonPool.consecutiveFailCount}連続ミス`
+            : "今日のミス",
+        })),
+      );
+    },
+    [mistakeCards],
+  );
+
+  // 回答発生時に unresolvedMistakeIds を更新
+  const handleAnswerMistakeCard = useCallback((cardId: string, result: "correct" | "incorrect") => {
+    setUnresolvedMistakeIds((prev) => {
+      const next = new Set(prev);
+      if (result === "correct") {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  }, []);
+
+  // 今日のミス結果画面のメインアクション算出
+  const getMainActionForMistakes = useCallback(() => {
+    if (!practiceCards) return undefined;
+
+    // ミスした状態で終わっているカードがある場合
+    if (unresolvedMistakeIds.size > 0) {
+      const remainingCards = cards.filter((c) => unresolvedMistakeIds.has(c.id));
+      const count = Math.min(10, remainingCards.length);
+      const batchCards = remainingCards.slice(0, 10);
+
+      return {
+        label: count === 10 ? "次の10問" : `次の${count}問`,
+        onClick: () => {
+          setPracticeCards(
+            batchCards.map((c) => ({
+              id: c.id,
+              front: c.front,
+              back: c.back,
+              badge: "未解決のミス",
+            })),
+          );
+        },
+      };
+    }
+
+    // ミスした状態で終わっているカードがない場合 -> 2周目開始（10問）
+    const batchCards = mistakeCards.slice(0, 10);
+    return {
+      label: "2周目開始（10問）",
+      onClick: () => {
+        setUnresolvedMistakeIds(new Set(batchCards.map((c) => c.id)));
+        setPracticeCards(
+          batchCards.map((c) => ({
+            id: c.id,
+            front: c.front,
+            back: c.back,
+            badge: "2周目",
+          })),
+        );
+      },
+    };
+  }, [practiceCards, unresolvedMistakeIds, cards, mistakeCards]);
 
   // 忘れかけ: 除外（講義プールへの降格）ハンドラ
   const handleDemoteForgotten = (all: boolean) => {
@@ -338,7 +402,8 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
           lectureTitle="今日のミス問題集中特訓"
           mode="FREE_PRACTICE"
           cards={practiceCards}
-          onAnswer={() => {}}
+          mainAction={getMainActionForMistakes()}
+          onAnswer={handleAnswerMistakeCard}
           onClose={() => setPracticeCards(null)}
         />
       )}

@@ -75,7 +75,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   return (
     <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-xl space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+      <div className="max-h-[90vh] w-full max-w-xl space-y-5 overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-2xl sm:p-6">
         {/* ヘッダー */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center space-x-2">
@@ -120,7 +120,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           <div className="space-y-4 text-xs">
             {/* 1. 目標記憶保持率 (requestRetention) */}
             <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-1">
                 <label className="font-semibold text-slate-200">
                   FSRS 目標記憶保持率 (request_retention)
                 </label>
@@ -146,7 +146,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
             {/* 2. 講義プールの待機ロック時間 (waitingDurationHours) */}
             <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="font-semibold text-slate-200">
                   講義専用プールの待機ロック時間
                 </label>
@@ -157,7 +157,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       waitingDurationHours: Number(e.target.value),
                     })
                   }
-                  className="cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-white outline-none"
+                  className="w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white outline-none sm:w-auto"
                 >
                   <option value={1}>1 時間</option>
                   <option value={4}>4 時間</option>
@@ -173,12 +173,12 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
 
             {/* 3. 先取り補充枠 (enableEarlyReview) */}
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="space-y-1">
                 <div className="font-semibold text-slate-200">
                   ⚡ 先取り（パープル）カードの自動補充
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] leading-relaxed text-slate-400">
                   本日の復習カードが10問未満のとき、翌日以降に期日が来るカードを近い順に10問まで補充します。
                 </p>
               </div>
@@ -189,7 +189,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     enableEarlyReview: !settings.enableEarlyReview,
                   })
                 }
-                className={`flex-shrink-0 cursor-pointer rounded-lg px-3.5 py-1.5 font-bold transition ${
+                className={`w-full cursor-pointer rounded-lg px-4 py-2 font-bold transition sm:w-auto sm:flex-shrink-0 ${
                   settings.enableEarlyReview
                     ? "bg-emerald-600 text-white"
                     : "bg-slate-800 text-slate-400"
@@ -200,10 +200,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             </div>
 
             {/* 4. 出題順 (sortOrder) */}
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="space-y-1">
                 <div className="font-semibold text-slate-200">共通プールのカテゴリ内出題順</div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] leading-relaxed text-slate-400">
                   優先・通常カテゴリ内でのカードの並び順を選択します（いずれの場合も🔁リベンジ枠が先頭になります）。
                 </p>
               </div>
@@ -214,18 +214,18 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     sortOrder: e.target.value as "DUE_ASC" | "SHUFFLE",
                   })
                 }
-                className="flex-shrink-0 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white outline-none"
+                className="w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none sm:w-auto sm:flex-shrink-0"
               >
                 <option value="DUE_ASC">期日昇順 (DUE_ASC)</option>
                 <option value="SHUFFLE">シャッフル (SHUFFLE)</option>
               </select>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => updateSettings(DEFAULT_APP_SETTINGS)}
-                className="cursor-pointer text-[11px] text-slate-400 underline hover:text-white"
+                className="cursor-pointer text-left text-[11px] text-slate-400 underline hover:text-white"
               >
                 初期設定（デフォルト）に戻す
               </button>
@@ -249,7 +249,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
             )}
 
             <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <span className="font-semibold text-slate-200">
                   📤 フルバックアップのエクスポート (JSON)
                 </span>

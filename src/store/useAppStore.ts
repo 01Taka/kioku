@@ -72,6 +72,7 @@ interface AppState {
   sessionState: SessionStorageState;
 
   selectedCourseId: string | null;
+  lastSelectedCourseId: string | null;
   selectedLectureId: string | null;
 
   lastImportBatch: LastImportBatchInfo | null;
@@ -167,6 +168,7 @@ export const useAppStore = create<AppState>()(
       settings: DEFAULT_APP_SETTINGS,
       sessionState: createDefaultSessionState(),
       selectedCourseId: null,
+      lastSelectedCourseId: null,
       selectedLectureId: null,
       lastImportBatch: null,
 
@@ -229,6 +231,11 @@ export const useAppStore = create<AppState>()(
               ? (remainingCourses[0]?.id ?? null)
               : state.selectedCourseId;
 
+          const nextLastSelectedCourseId =
+            state.lastSelectedCourseId === id
+              ? (remainingCourses[0]?.id ?? null)
+              : state.lastSelectedCourseId;
+
           const nextSelectedLectureId = remainingLectures.some(
             (l) => l.id === state.selectedLectureId,
           )
@@ -240,6 +247,7 @@ export const useAppStore = create<AppState>()(
             lectures: remainingLectures,
             cards: remainingCards,
             selectedCourseId: nextSelectedCourseId,
+            lastSelectedCourseId: nextLastSelectedCourseId,
             selectedLectureId: nextSelectedLectureId,
           };
         });
@@ -720,6 +728,7 @@ export const useAppStore = create<AppState>()(
           }
           return {
             selectedCourseId: courseId,
+            lastSelectedCourseId: courseId ?? state.lastSelectedCourseId,
             selectedLectureId: nextLectureId,
           };
         });
@@ -981,6 +990,7 @@ export const useAppStore = create<AppState>()(
           lectures: [lec1, lec2, lec3],
           cards: [card1, card2, card3, card4, card5],
           selectedCourseId: course1.id,
+          lastSelectedCourseId: course1.id,
           selectedLectureId: lec1.id,
         });
       },
@@ -994,6 +1004,7 @@ export const useAppStore = create<AppState>()(
         settings: state.settings,
         sessionState: state.sessionState,
         selectedCourseId: state.selectedCourseId,
+        lastSelectedCourseId: state.lastSelectedCourseId,
         selectedLectureId: state.selectedLectureId,
       }),
       onRehydrateStorage: () => (state) => {

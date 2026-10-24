@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { HomeView } from "./components/home/HomeView";
 import { SettingsIcon } from "./components/icons";
@@ -15,7 +15,14 @@ import { SettingsModal } from "./components/settings/SettingsModal";
 import { useAppStore } from "./store/useAppStore";
 
 export default function App() {
-  const { courses, loadSampleData, syncDailyCutoff } = useAppStore();
+  const {
+    courses,
+    selectedCourseId,
+    lastSelectedCourseId,
+    selectCourse,
+    loadSampleData,
+    syncDailyCutoff,
+  } = useAppStore();
 
   // 大カテゴリー: "HOME" | "MATERIALS"
   const [currentCategory, setCurrentCategory] = useState<NavCategory>("HOME");
@@ -23,12 +30,29 @@ export default function App() {
   // ホーム内の中カテゴリー: "MAIN" | "MISTAKES" | "FORGOTTEN"
   const [homeSubTab, setHomeSubTab] = useState<HomeSubTab>("MAIN");
 
-  // 教材内の選択科目ID（nullの場合は科目一覧を表示）
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-
   // モーダル状態
   const [isCommonSessionOpen, setIsCommonSessionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // カテゴリー切り替え（教材タブへ移動・復帰する際、最後に開いていた科目を復元）
+  const handleSelectCategory = useCallback(
+    (cat: NavCategory) => {
+      if (cat === "MATERIALS") {
+        const targetCourseId =
+          selectedCourseId && courses.some((c) => c.id === selectedCourseId)
+            ? selectedCourseId
+            : lastSelectedCourseId && courses.some((c) => c.id === lastSelectedCourseId)
+              ? lastSelectedCourseId
+              : null;
+
+        if (targetCourseId && targetCourseId !== selectedCourseId) {
+          selectCourse(targetCourseId);
+        }
+      }
+      setCurrentCategory(cat);
+    },
+    [courses, selectedCourseId, lastSelectedCourseId, selectCourse],
+  );
 
   // 初回起動時、データが空の場合は自動でサンプルデータを投入
   useEffect(() => {
@@ -46,20 +70,21 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [syncDailyCutoff]);
 
+  // 現在選択されている有効な科目
+  const activeCourse = courses.find((c) => c.id === selectedCourseId);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100 antialiased">
       {/* PC版: 左固定サイドバー */}
       <div className="hidden h-full md:flex">
         <DesktopSidebar
           currentCategory={currentCategory}
-          onSelectCategory={(cat) => {
-            setCurrentCategory(cat);
-          }}
+          onSelectCategory={handleSelectCategory}
           homeSubTab={homeSubTab}
           onSelectHomeSubTab={setHomeSubTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          selectedCourseId={selectedCourseId}
-          onBackToCourseList={() => setSelectedCourseId(null)}
+          selectedCourseId={activeCourse?.id ?? null}
+          onBackToCourseList={() => selectCourse(null)}
         />
       </div>
 
@@ -92,24 +117,19 @@ export default function App() {
               onSelectSubTab={setHomeSubTab}
               onStartCommonSession={() => setIsCommonSessionOpen(true)}
             />
-          ) : selectedCourseId ? (
+          ) : activeCourse ? (
             <CourseDetailView
-              courseId={selectedCourseId}
-              onBackToCourseList={() => setSelectedCourseId(null)}
+              courseId={activeCourse.id}
+              onBackToCourseList={() => selectCourse(null)}
             />
           ) : (
-            <CourseListView onSelectCourse={(courseId) => setSelectedCourseId(courseId)} />
+            <CourseListView onSelectCourse={(courseId) => selectCourse(courseId)} />
           )}
         </main>
       </div>
 
       {/* スマホ版: ボトムナビゲーションバー */}
-      <MobileBottomNav
-        currentCategory={currentCategory}
-        onSelectCategory={(cat) => {
-          setCurrentCategory(cat);
-        }}
-      />
+      <MobileBottomNav currentCategory={currentCategory} onSelectCategory={handleSelectCategory} />
 
       {/* 共通プール 10問マイクロセッション モーダル */}
       {isCommonSessionOpen && (

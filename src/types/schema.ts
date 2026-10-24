@@ -287,7 +287,7 @@ export const REVIEW_CATEGORY_THEME: Record<
 /** 午前04:00基準の当日境界日時を取得 */
 export function getCutoffTime(
   now: Date = new Date(),
-  cutoffHour = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
+  cutoffHour: number = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
 ): Date {
   const cutoff = new Date(now);
   if (cutoff.getHours() < cutoffHour) {
@@ -300,7 +300,7 @@ export function getCutoffTime(
 /** 午前04:00基準の翌日境界日時を取得 */
 export function getNextCutoffTime(
   now: Date = new Date(),
-  cutoffHour = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
+  cutoffHour: number = SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
 ): Date {
   const cutoff = getCutoffTime(now, cutoffHour);
   cutoff.setDate(cutoff.getDate() + 1);

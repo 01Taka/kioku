@@ -51,23 +51,23 @@
   - 出題対象: `phase === 'UNMEMORIZED'` または「待機時間（8h）が経過した `WAITING`」
   - 待機中（ロック中）のカードは出題キューから除外
   - 成果物: `src/utils/trainingQueue.ts`, `src/store/useAppStore.ts` (`getLectureTrainingQueue`)
-- [ ] **Task 1-2: 特訓回答（〇 / ×）による3段階状態遷移を実装する (Update)**
+- [x] **Task 1-2: 特訓回答（〇 / ×）による3段階状態遷移を実装する (Update)**
   - 未暗記カードで正解（〇） ➔ `phase = WAITING`, `consecutiveCorrect = 1`, `lastCorrectAt = now`
   - 待機解除カードで正解（〇） ➔ 卒業処理呼び出し（Task 1-3へ）
   - いずれの状態で不正解（×） ➔ `phase = UNMEMORIZED`, `consecutiveCorrect = 0`, `lastCorrectAt = null` に逆戻り
   - 成果物: `src/store/useAppStore.ts` (`answerLectureTrainingCard`)
-- [ ] **Task 1-3: 卒業カードの FSRS 初期化と ACTIVE 昇格処理を実装する (Update)**
+- [x] **Task 1-3: 卒業カードの FSRS 初期化と ACTIVE 昇格処理を実装する (Update)**
   - 2回連続正解（または「プールに移動」ボタン）で `phase = ACTIVE` に変更
   - `ts-fsrs` の初期カード作成 ＆ `Rating.Good` をバックグラウンド実行
   - `lastReviewedAt = now` をセットし、`due` は翌日以降に設定（当日の共通プールには出さない）
-  - 成果物: `src/store/useAppStore.ts` (`graduateCard`)
-- [ ] **Task 1-4: 講義ビューのリアルタイム・カウントダウン表示を仕上げる (UI/UX)**
+  - 成果物: `src/services/fsrsService.ts`, `src/utils/trainingQueue.ts` (`promoteCardToGraduate`)
+- [x] **Task 1-4: 講義ビューのリアルタイム・カウントダウン表示を仕上げる (UI/UX)**
   - 待機中カードが存在する場合、「あと○時間○分でテスト可能」と正確に表示
   - 待機解除時に「出題可能」バッジへ動的切り替え
   - 成果物: `src/components/LecturePoolDetail.tsx`
-- [ ] **Task 1-5: 「通常特訓モード」と「テスト直前・集中ループ演習（自由演習）」の分離 (UI)**
+- [x] **Task 1-5: 「通常特訓モード」と「テスト直前・集中ループ演習（自由演習）」の分離 (UI)**
   - 状態遷移が発生する「短期特訓スタート」ボタンと、FSRS・状態を汚染しない「自由演習（ループ）」ボタンのUI分離
-  - 成果物: `src/components/LecturePoolDetail.tsx`
+  - 成果物: `src/components/LecturePoolDetail.tsx`, `src/components/practice/LecturePlayer.tsx`
 
 ---
 

@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAppStore } from "../store/useAppStore";
 import type { LectureCardPhase, PriorityMode, Card } from "../types/schema";
-import { SYSTEM_CONSTANTS, isWaitingCardLocked } from "../types/schema";
+import { isWaitingCardLocked } from "../types/schema";
 import { AiBatchImportModal } from "./AiBatchImportModal";
-import { LecturePlayer } from "./practice/LecturePlayer";
+import { LecturePlayer, type PracticeCardItem } from "./practice/LecturePlayer";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
 import {
   PlusIcon,
@@ -18,6 +18,7 @@ import {
   UndoIcon,
   SlidersIcon,
   PlayIcon,
+  ShuffleIcon,
 } from "./icons";
 
 export function LecturePoolDetail() {
@@ -25,6 +26,7 @@ export function LecturePoolDetail() {
     courses,
     lectures,
     cards,
+    settings,
     selectedLectureId,
     updateLecture,
     deleteLecture,
@@ -37,6 +39,7 @@ export function LecturePoolDetail() {
     isDuplicateOfLastBatch,
     setCardPhase,
     toggleCardSuspension,
+    answerLectureTrainingCard,
     getLectureProgress,
     getLectureTrainingQueue,
   } = useAppStore();
@@ -44,9 +47,22 @@ export function LecturePoolDetail() {
   const selectedLecture = lectures.find((l) => l.id === selectedLectureId);
   const selectedCourse = courses.find((c) => c.id === selectedLecture?.courseId);
 
+  // リアルタイムロック解除監視・カウントダウン更新用タイマー (30秒ごと)
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 30000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // AI一括取り込みモーダル状態
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isPracticeOpen, setIsPracticeOpen] = useState(false);
+  // 演習セッション状態（短期特訓 or 自由演習のスナップショット）
+  const [practiceSession, setPracticeSession] = useState<{
+    mode: "TRAINING" | "FREE_PRACTICE";
+    cards: PracticeCardItem[];
+  } | null>(null);
   const [importInitialText, setImportInitialText] = useState("");
   const [lastImportNotification, setLastImportNotification] = useState<{
     bundleId: string;
@@ -76,8 +92,12 @@ export function LecturePoolDetail() {
 
   const trainingQueue = useMemo(() => {
     if (!selectedLectureId) return null;
-    return getLectureTrainingQueue(selectedLectureId);
-  }, [selectedLectureId, getLectureTrainingQueue, cards]);
+    return getLectureTrainingQueue(
+      selectedLectureId,
+      settings.waitingDurationHours,
+      new Date(nowTick),
+    );
+  }, [selectedLectureId, getLectureTrainingQueue, cards, settings.waitingDurationHours, nowTick]);
 
   const filteredCards = useMemo(() => {
     const trainingCardIds = new Set(trainingQueue?.cards.map((c) => c.id) ?? []);
@@ -107,16 +127,53 @@ export function LecturePoolDetail() {
     );
   }
 
-  // クールダウン残り時間の計算
+  // クールダウン残り時間の計算 (nowTick に連動してリアルタイム更新)
   const getRemainingCooldownText = (lastCorrectAt: string | null) => {
     if (!lastCorrectAt) return null;
     const unlockTime = new Date(lastCorrectAt);
-    unlockTime.setHours(unlockTime.getHours() + SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS);
-    const diffMs = unlockTime.getTime() - Date.now();
+    unlockTime.setHours(unlockTime.getHours() + settings.waitingDurationHours);
+    const diffMs = unlockTime.getTime() - nowTick;
     if (diffMs <= 0) return "ロック解除済み (出題可能)";
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     return `あと ${hours}時間 ${minutes}分 ロック中`;
+  };
+
+  // 短期特訓スタート（未暗記＋待機解除済みカードのみ出題し、状態遷移を行う）
+  const startTrainingMode = () => {
+    if (!trainingQueue || trainingQueue.cards.length === 0) return;
+    setPracticeSession({
+      mode: "TRAINING",
+      cards: trainingQueue.cards.map((c) => ({
+        id: c.id,
+        front: c.front,
+        back: c.back,
+        badge:
+          c.lecturePool.phase === "WAITING"
+            ? "待機解除 (正解で卒業)"
+            : "未暗記 (正解で8h待機)",
+      })),
+    });
+  };
+
+  // 自由演習ループスタート（休止以外の全講義カードを状態変更なしで演習）
+  const startFreePracticeMode = () => {
+    const activeLectureCards = lectureCards.filter((c) => !c.isSuspended);
+    if (activeLectureCards.length === 0) return;
+    setPracticeSession({
+      mode: "FREE_PRACTICE",
+      cards: activeLectureCards.map((c) => ({
+        id: c.id,
+        front: c.front,
+        back: c.back,
+        badge:
+          c.lecturePool.phase === "ACTIVE"
+            ? "卒業済"
+            : c.lecturePool.phase === "WAITING"
+              ? "待機中"
+              : "未暗記",
+      })),
+    });
   };
 
   const handleAddCard = (e: React.FormEvent) => {
@@ -261,16 +318,27 @@ export function LecturePoolDetail() {
           </div>
 
           {/* 講義操作・設定 */}
-          <div className="flex items-center space-x-2 text-xs">
-            {/* 演習開始ボタン */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {/* 短期特訓スタートボタン（状態遷移あり） */}
             <button
-              onClick={() => setIsPracticeOpen(true)}
-              disabled={lectureCards.length === 0}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md shadow-emerald-600/30 flex items-center space-x-1.5 transition cursor-pointer"
-              title="この講義のカードを演習する"
+              onClick={startTrainingMode}
+              disabled={!trainingQueue || trainingQueue.cards.length === 0}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md shadow-amber-600/30 flex items-center space-x-1.5 transition cursor-pointer"
+              title="未暗記と8h待機解除済みのカードを出題し、短期暗記・卒業判定を行います"
             >
               <PlayIcon size={12} />
-              <span>演習スタート</span>
+              <span>⚡ 短期特訓 ({trainingQueue?.cards.length ?? 0}枚)</span>
+            </button>
+
+            {/* 自由演習（集中ループ）ボタン（状態変更なし） */}
+            <button
+              onClick={startFreePracticeMode}
+              disabled={lectureCards.filter((c) => !c.isSuspended).length === 0}
+              className="px-3 py-1.5 bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg border border-indigo-400/30 flex items-center space-x-1.5 transition cursor-pointer"
+              title="待機時間や卒業ステータスを変更せず、この講義のカードを何度でも集中ループ演習します"
+            >
+              <ShuffleIcon size={12} />
+              <span>🔁 自由演習</span>
             </button>
 
             {/* 優先度設定 */}
@@ -351,10 +419,18 @@ export function LecturePoolDetail() {
             </div>
 
             {/* クールダウン案内 */}
-            {progress.earliestUnlockAt && (
+            {trainingQueue?.earliestUnlockAt && (
               <div className="flex items-center space-x-1.5 text-amber-300 bg-amber-950/40 border border-amber-800/60 px-2.5 py-1 rounded-md">
                 <ClockIcon size={13} />
-                <span>最短ロック解除: {getRemainingCooldownText(new Date(new Date(progress.earliestUnlockAt).getTime() - SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS * 3600000).toISOString())}</span>
+                <span>
+                  最短ロック解除:{" "}
+                  {getRemainingCooldownText(
+                    new Date(
+                      new Date(trainingQueue.earliestUnlockAt).getTime() -
+                        settings.waitingDurationHours * 3600000,
+                    ).toISOString(),
+                  )}
+                </span>
               </div>
             )}
           </div>
@@ -558,7 +634,11 @@ export function LecturePoolDetail() {
             <div className="space-y-2.5">
               {filteredCards.map((card, idx) => {
                 const phase = card.lecturePool.phase;
-                const isLocked = isWaitingCardLocked(card, SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS);
+                const isLocked = isWaitingCardLocked(
+                  card,
+                  settings.waitingDurationHours,
+                  new Date(nowTick),
+                );
                 const cooldownText = getRemainingCooldownText(card.lecturePool.lastCorrectAt);
 
                 return (
@@ -787,18 +867,18 @@ export function LecturePoolDetail() {
         />
       )}
 
-      {/* 講義カード演習プレイヤー（疎結合） */}
-      {isPracticeOpen && (
+      {/* 講義カード演習プレイヤー（短期特訓モード / 自由演習モード） */}
+      {practiceSession && (
         <LecturePlayer
           lectureTitle={`${selectedCourse.name} - ${selectedLecture.name}`}
-          cards={lectureCards
-            .filter((c) => !c.isSuspended)
-            .map((c) => ({ id: c.id, front: c.front, back: c.back }))}
+          mode={practiceSession.mode}
+          cards={practiceSession.cards}
           onAnswer={(cardId, result) => {
-            // 情報伝達のみ（FSRS計算やフェーズ変更等の副作用は一切起こさない）
-            console.log(`[Practice] Card ${cardId}: ${result}`);
+            if (practiceSession.mode === "TRAINING") {
+              answerLectureTrainingCard(cardId, result);
+            }
           }}
-          onClose={() => setIsPracticeOpen(false)}
+          onClose={() => setPracticeSession(null)}
         />
       )}
     </main>

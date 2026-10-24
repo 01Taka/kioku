@@ -5,12 +5,18 @@ export interface PracticeCardItem {
   id: string;
   front: string;
   back: string;
+  /** カード左上に表示する任意フェーズバッジ等（例: "未暗記", "待機解除(1連続正解)"） */
+  badge?: string;
 }
 
 export interface LecturePlayerProps {
   lectureTitle: string;
   cards: PracticeCardItem[];
-  /** 回答発生時の通知コールバック（情報伝達用、挙動変更は起こさない） */
+  /** 演習モード（省略時は汎用/自由演習扱い） */
+  mode?: "TRAINING" | "FREE_PRACTICE";
+  /** ヘッダー左上のカスタムバッジ文字列 */
+  headerBadgeText?: string;
+  /** 回答発生時の通知コールバック */
   onAnswer?: (cardId: string, result: "correct" | "incorrect") => void;
   /** 全問終了時の通知コールバック */
   onFinish?: (results: Record<string, "correct" | "incorrect">) => void;
@@ -29,6 +35,8 @@ type SlideAnimationState =
 export function LecturePlayer({
   lectureTitle,
   cards,
+  mode = "FREE_PRACTICE",
+  headerBadgeText,
   onAnswer,
   onFinish,
   onClose,
@@ -290,8 +298,15 @@ export function LecturePlayer({
         <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-6 shadow-2xl">
           <div className="text-center space-y-2">
             <span className="text-4xl">🎉</span>
-            <h2 className="text-lg font-bold text-white">演習が完了しました</h2>
+            <h2 className="text-lg font-bold text-white">
+              {mode === "TRAINING" ? "短期特訓が完了しました" : "演習が完了しました"}
+            </h2>
             <p className="text-xs text-slate-400">{lectureTitle}</p>
+            {mode === "TRAINING" && (
+              <p className="text-[11px] text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 rounded-lg py-1.5 px-3">
+                正解したカードは待機ロック（8h）または共通プール（卒業）へ移行しました
+              </p>
+            )}
           </div>
 
           <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 space-y-3">
@@ -314,20 +329,24 @@ export function LecturePlayer({
           </div>
 
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handleRestart}
-              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
-            >
-              最初からもう一度
-            </button>
-            <button
-              onClick={handleShuffle}
-              className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white text-xs font-semibold rounded-xl border border-indigo-500/30 transition cursor-pointer flex items-center justify-center space-x-1.5"
-              title="カードをシャッフルして再開"
-            >
-              <ShuffleIcon size={14} />
-              <span>シャッフル</span>
-            </button>
+            {mode === "FREE_PRACTICE" && (
+              <>
+                <button
+                  onClick={handleRestart}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+                >
+                  最初からもう一度
+                </button>
+                <button
+                  onClick={handleShuffle}
+                  className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white text-xs font-semibold rounded-xl border border-indigo-500/30 transition cursor-pointer flex items-center justify-center space-x-1.5"
+                  title="カードをシャッフルして再開"
+                >
+                  <ShuffleIcon size={14} />
+                  <span>シャッフル</span>
+                </button>
+              </>
+            )}
             <button
               onClick={onClose}
               className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition cursor-pointer"
@@ -345,8 +364,15 @@ export function LecturePlayer({
       {/* 演習ヘッダー */}
       <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <span className="text-xs px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
-            講義カード出題
+          <span
+            className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+              mode === "TRAINING"
+                ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+            }`}
+          >
+            {headerBadgeText ??
+              (mode === "TRAINING" ? "⚡ 短期特訓モード" : "🔁 自由演習（集中ループ）")}
           </span>
           <h2 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md">
             {lectureTitle}
@@ -432,9 +458,16 @@ export function LecturePlayer({
                 style={{ backfaceVisibility: "hidden" }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
-                    表面（問題）
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">
+                      表面（問題）
+                    </span>
+                    {currentCard.badge && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                        {currentCard.badge}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
                 </div>
 

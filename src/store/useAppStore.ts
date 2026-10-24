@@ -10,17 +10,21 @@ import type {
   CourseProgress,
   FlashcardContent,
   LectureTrainingQueueResult,
+  AppSettings,
 } from "../types/schema";
 import {
   createNewCard,
-  graduateCardToCommonPool,
   demoteCardToLecturePool,
   getSuspensionStatus,
   isWaitingCardLocked,
   SYSTEM_CONSTANTS,
 } from "../types/schema";
-import { buildLectureTrainingQueue } from "../utils/trainingQueue";
-import { createEmptyCard } from "ts-fsrs";
+import {
+  buildLectureTrainingQueue,
+  promoteCardToGraduate,
+  applyLectureTrainingAnswer,
+  type LectureTrainingTransitionResult,
+} from "../utils/trainingQueue";
 
 export function getBatchSignature(contents: FlashcardContent[]): string {
   return contents
@@ -36,15 +40,27 @@ export interface LastImportBatchInfo {
   count: number;
 }
 
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  requestRetention: SYSTEM_CONSTANTS.TARGET_RETENTION,
+  enableEarlyReview: true,
+  sortOrder: "DUE_ASC",
+  dayCutoffHour: SYSTEM_CONSTANTS.DAY_CUTOFF_HOUR,
+  waitingDurationHours: SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
+};
+
 interface AppState {
   courses: Course[];
   lectures: Lecture[];
   cards: Card[];
+  settings: AppSettings;
 
   selectedCourseId: string | null;
   selectedLectureId: string | null;
 
   lastImportBatch: LastImportBatchInfo | null;
+
+  // Settings actions
+  updateSettings: (updates: Partial<AppSettings>) => void;
 
   // Course actions
   addCourse: (name: string, priorityMode?: PriorityMode) => Course;
@@ -78,6 +94,11 @@ interface AppState {
   deleteCard: (id: string) => void;
   setCardPhase: (id: string, phase: LectureCardPhase) => void;
   toggleCardSuspension: (id: string) => void;
+  answerLectureTrainingCard: (
+    cardId: string,
+    result: "correct" | "incorrect",
+    now?: Date,
+  ) => LectureTrainingTransitionResult | null;
 
   // Batch / Bundle actions
   addCardsBatch: (
@@ -119,9 +140,19 @@ export const useAppStore = create<AppState>()(
       courses: [],
       lectures: [],
       cards: [],
+      settings: DEFAULT_APP_SETTINGS,
       selectedCourseId: null,
       selectedLectureId: null,
       lastImportBatch: null,
+
+      updateSettings: (updates) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            ...updates,
+          },
+        }));
+      },
 
       addCourse: (name, priorityMode = "NORMAL") => {
         const now = new Date().toISOString();
@@ -308,12 +339,18 @@ export const useAppStore = create<AppState>()(
         if (!card) return;
 
         let updatedCard: Card;
-        const now = new Date().toISOString();
+        const nowDate = new Date();
+        const now = nowDate.toISOString();
+        const { requestRetention, dayCutoffHour } = get().settings;
 
         if (phase === "ACTIVE") {
-          // Promote to common pool
-          const initialFsrs = createEmptyCard();
-          updatedCard = graduateCardToCommonPool(card, initialFsrs);
+          // Promote to common pool with Rating.Good background calculation
+          updatedCard = promoteCardToGraduate(
+            card,
+            nowDate,
+            requestRetention,
+            dayCutoffHour,
+          );
         } else if (phase === "WAITING") {
           updatedCard = {
             ...card,
@@ -344,6 +381,28 @@ export const useAppStore = create<AppState>()(
               : card,
           ),
         }));
+      },
+
+      answerLectureTrainingCard: (cardId, result, now = new Date()) => {
+        const card = get().cards.find((c) => c.id === cardId);
+        if (!card) return null;
+
+        const { requestRetention, dayCutoffHour } = get().settings;
+        const transitionResult = applyLectureTrainingAnswer(
+          card,
+          result,
+          now,
+          requestRetention,
+          dayCutoffHour,
+        );
+
+        set((state) => ({
+          cards: state.cards.map((c) =>
+            c.id === cardId ? transitionResult.updatedCard : c,
+          ),
+        }));
+
+        return transitionResult;
       },
 
       addCardsBatch: (courseId, lectureId, contents, customBundleId) => {
@@ -443,19 +502,18 @@ export const useAppStore = create<AppState>()(
         let isWaitingLocked = false;
 
         const now = new Date();
+        const waitingHours = get().settings.waitingDurationHours;
 
         for (const card of cards) {
           if (card.lecturePool.phase === "UNMEMORIZED") {
             unmemorizedCount++;
           } else if (card.lecturePool.phase === "WAITING") {
             waitingCount++;
-            if (isWaitingCardLocked(card, SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS, now)) {
+            if (isWaitingCardLocked(card, waitingHours, now)) {
               isWaitingLocked = true;
               if (card.lecturePool.lastCorrectAt) {
                 const unlock = new Date(card.lecturePool.lastCorrectAt);
-                unlock.setHours(
-                  unlock.getHours() + SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
-                );
+                unlock.setHours(unlock.getHours() + waitingHours);
                 const unlockIso = unlock.toISOString();
                 if (!earliestUnlockAt || unlockIso < earliestUnlockAt) {
                   earliestUnlockAt = unlockIso;
@@ -502,7 +560,7 @@ export const useAppStore = create<AppState>()(
         return buildLectureTrainingQueue(
           get().cards,
           lectureId,
-          waitingHours ?? SYSTEM_CONSTANTS.DEFAULT_WAITING_HOURS,
+          waitingHours ?? get().settings.waitingDurationHours,
           now ?? new Date(),
         );
       },
@@ -582,7 +640,7 @@ export const useAppStore = create<AppState>()(
           lastCorrectAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(), // 4時間前
         };
 
-        const card4 = graduateCardToCommonPool(
+        const card4 = promoteCardToGraduate(
           createNewCard({
             id: "card_c1_4",
             courseId: course1.id,
@@ -590,7 +648,7 @@ export const useAppStore = create<AppState>()(
             front: "抵抗 R の単位とその記号は？",
             back: "オーム [Ω]",
           }),
-          createEmptyCard(),
+          new Date(Date.now() - 24 * 3600 * 1000), // 1日前に卒業したサンプル
         );
 
         const card5 = createNewCard({
@@ -616,6 +674,7 @@ export const useAppStore = create<AppState>()(
         courses: state.courses,
         lectures: state.lectures,
         cards: state.cards,
+        settings: state.settings,
         selectedCourseId: state.selectedCourseId,
         selectedLectureId: state.selectedLectureId,
       }),

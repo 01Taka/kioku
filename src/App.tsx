@@ -84,6 +84,7 @@ export default function App() {
           onSelectHomeSubTab={setHomeSubTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
           selectedCourseId={activeCourse?.id ?? null}
+          onSelectCourse={(courseId) => selectCourse(courseId)}
           onBackToCourseList={() => selectCourse(null)}
         />
       </div>

@@ -2,7 +2,7 @@ import React from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import type { Card, Course } from "../../types/schema";
-import { ArrowLeftIcon, BookOpenIcon, HomeIcon, SettingsIcon } from "../icons";
+import { BookOpenIcon, ChevronDownIcon, HomeIcon, SettingsIcon } from "../icons";
 
 export type NavCategory = "HOME" | "MATERIALS";
 export type HomeSubTab = "MAIN" | "MISTAKES" | "FORGOTTEN";
@@ -14,7 +14,8 @@ interface AppNavigationProps {
   onSelectHomeSubTab: (subTab: HomeSubTab) => void;
   onOpenSettings: () => void;
   selectedCourseId: string | null;
-  onBackToCourseList: () => void;
+  onSelectCourse?: (courseId: string) => void;
+  onBackToCourseList?: () => void;
 }
 
 /**
@@ -27,11 +28,10 @@ export function DesktopSidebar({
   onSelectHomeSubTab,
   onOpenSettings,
   selectedCourseId,
-  onBackToCourseList,
+  onSelectCourse,
 }: AppNavigationProps) {
-  const { courses, cards, sessionState, getCommonPoolQueue } = useAppStore();
-
-  const selectedCourse = courses.find((c: Course) => c.id === selectedCourseId);
+  const { courses, cards, sessionState, getCommonPoolQueue, selectCourse } = useAppStore();
+  const [isMaterialsOpen, setIsMaterialsOpen] = React.useState(true);
 
   // バッジ集計
   const mistakeCount = React.useMemo(() => {
@@ -135,12 +135,17 @@ export function DesktopSidebar({
             </div>
           </div>
 
-          {/* 大カテゴリー: 教材 */}
+          {/* 大カテゴリー: 教材（アコーディオン） */}
           <div className="pt-2">
             <button
               type="button"
               onClick={() => {
-                onSelectCategory("MATERIALS");
+                if (currentCategory !== "MATERIALS") {
+                  onSelectCategory("MATERIALS");
+                  setIsMaterialsOpen(true);
+                } else {
+                  setIsMaterialsOpen(!isMaterialsOpen);
+                }
               }}
               className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition ${
                 currentCategory === "MATERIALS"
@@ -152,24 +157,50 @@ export function DesktopSidebar({
                 <BookOpenIcon size={16} />
                 <span>教材</span>
               </div>
-              <span className="font-mono text-[11px] text-slate-500">{courses.length}科目</span>
+              <div className="flex items-center space-x-1.5 text-slate-500">
+                <span className="font-mono text-[11px]">{courses.length}科目</span>
+                <ChevronDownIcon
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    isMaterialsOpen ? "rotate-180 text-slate-300" : ""
+                  }`}
+                />
+              </div>
             </button>
 
-            {/* 教材選択中かつ科目選択時のパンくず・戻るボタン */}
-            {currentCategory === "MATERIALS" && selectedCourse && (
-              <div className="mt-1 ml-4 border-l border-slate-800 pl-2">
-                <button
-                  type="button"
-                  onClick={onBackToCourseList}
-                  className="flex w-full cursor-pointer items-center space-x-1 rounded-lg px-2 py-1.5 text-left text-[11px] text-indigo-400 transition hover:bg-indigo-950/40 hover:text-indigo-300"
-                  title="教材一覧（科目リスト）へ戻る"
-                >
-                  <ArrowLeftIcon size={12} />
-                  <span>教材一覧へ</span>
-                </button>
-                <div className="truncate px-2 py-1 text-xs font-medium text-white">
-                  📚 {selectedCourse.name}
-                </div>
+            {/* 展開時: すべての教材（科目）を一覧表示 */}
+            {isMaterialsOpen && (
+              <div className="mt-1 ml-4 space-y-0.5 border-l border-slate-800 pl-2">
+                {courses.length === 0 ? (
+                  <div className="px-2 py-1.5 text-[11px] text-slate-500">科目がありません</div>
+                ) : (
+                  courses.map((course: Course) => {
+                    const isSelected =
+                      currentCategory === "MATERIALS" && selectedCourseId === course.id;
+                    return (
+                      <button
+                        key={course.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectCategory("MATERIALS");
+                          if (onSelectCourse) {
+                            onSelectCourse(course.id);
+                          } else {
+                            selectCourse(course.id);
+                          }
+                        }}
+                        className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition ${
+                          isSelected
+                            ? "bg-slate-800 font-medium text-white"
+                            : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200"
+                        }`}
+                        title={course.name}
+                      >
+                        <span className="truncate">{course.name}</span>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
           </div>

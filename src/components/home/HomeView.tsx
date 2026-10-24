@@ -139,23 +139,24 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
 
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden bg-slate-950 select-none">
-      {/* スマホ版: 上部タブナビゲーション */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 bg-slate-900/80 px-4 pt-3 md:hidden">
+      {/* スマホ版: 上部タブナビゲーション（画面幅全体を等間隔で配置） */}
+      <div className="grid grid-cols-3 border-b border-slate-800 bg-slate-900/80 pt-2.5 md:hidden">
         <button
           type="button"
           onClick={() => onSelectSubTab("MAIN")}
-          className={`cursor-pointer border-b-2 pb-2 text-xs font-semibold transition ${
+          className={`flex cursor-pointer items-center justify-center border-b-2 pb-2.5 text-xs font-semibold transition ${
             activeSubTab === "MAIN"
               ? "border-indigo-500 text-white"
               : "border-transparent text-slate-400 hover:text-slate-200"
           }`}
         >
-          メイン
+          <span>メイン</span>
         </button>
+
         <button
           type="button"
           onClick={() => onSelectSubTab("MISTAKES")}
-          className={`flex cursor-pointer items-center space-x-1 border-b-2 pb-2 text-xs font-semibold transition ${
+          className={`flex cursor-pointer items-center justify-center space-x-1 border-b-2 pb-2.5 text-xs font-semibold transition ${
             activeSubTab === "MISTAKES"
               ? "border-amber-500 text-amber-300"
               : "border-transparent text-slate-400 hover:text-slate-200"
@@ -168,10 +169,11 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
             </span>
           )}
         </button>
+
         <button
           type="button"
           onClick={() => onSelectSubTab("FORGOTTEN")}
-          className={`flex cursor-pointer items-center space-x-1 border-b-2 pb-2 text-xs font-semibold transition ${
+          className={`flex cursor-pointer items-center justify-center space-x-1 border-b-2 pb-2.5 text-xs font-semibold transition ${
             activeSubTab === "FORGOTTEN"
               ? "border-rose-500 text-rose-300"
               : "border-transparent text-slate-400 hover:text-slate-200"

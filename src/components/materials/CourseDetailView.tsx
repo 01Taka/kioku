@@ -299,12 +299,12 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
         </div>
       </div>
 
-      {/* 上部に チェック / 復習 / 編集 のタブ */}
-      <div className="mb-4 flex items-center space-x-1 border-b border-slate-800 bg-slate-950 pb-2">
+      {/* 上部に チェック / 復習 / 編集 のタブ（画面幅全体を等間隔で配置） */}
+      <div className="mb-4 grid grid-cols-3 gap-1.5 border-b border-slate-800 bg-slate-950 pb-2 sm:flex sm:items-center sm:space-x-2">
         <button
           type="button"
           onClick={() => setActiveTab("CHECK")}
-          className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`flex cursor-pointer items-center justify-center rounded-xl px-2 py-2 text-xs font-semibold transition sm:px-4 ${
             activeTab === "CHECK"
               ? "bg-amber-600 text-white shadow-md shadow-amber-600/30"
               : "text-slate-400 hover:bg-slate-900 hover:text-white"
@@ -316,7 +316,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
         <button
           type="button"
           onClick={() => setActiveTab("REVIEW")}
-          className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`flex cursor-pointer items-center justify-center rounded-xl px-2 py-2 text-xs font-semibold transition sm:px-4 ${
             activeTab === "REVIEW"
               ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
               : "text-slate-400 hover:bg-slate-900 hover:text-white"
@@ -328,7 +328,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
         <button
           type="button"
           onClick={() => setActiveTab("EDIT")}
-          className={`cursor-pointer rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`flex cursor-pointer items-center justify-center rounded-xl px-2 py-2 text-xs font-semibold transition sm:px-4 ${
             activeTab === "EDIT"
               ? "border border-slate-700 bg-slate-800 text-white"
               : "text-slate-400 hover:bg-slate-900 hover:text-white"

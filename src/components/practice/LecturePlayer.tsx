@@ -54,6 +54,7 @@ export function LecturePlayer({
   const [isFlipped, setIsFlipped] = useState(false);
   const [answers, setAnswers] = useState<Record<string, "correct" | "incorrect">>({});
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isShowingMistakesReview, setIsShowingMistakesReview] = useState(false);
   const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
   const [graduatedNoticeCount, setGraduatedNoticeCount] = useState<number | null>(null);
   // 新しく卒業対象（正解したカード）の選択状態（デフォルト全選択）
@@ -68,6 +69,7 @@ export function LecturePlayer({
     setIsFlipped(false);
     setAnswers({});
     setIsCompleted(false);
+    setIsShowingMistakesReview(false);
   }, [cards]);
 
   const totalCards = activeCards.length;
@@ -88,6 +90,7 @@ export function LecturePlayer({
     setIsFlipped(false);
     setAnswers({});
     setIsCompleted(false);
+    setIsShowingMistakesReview(false);
     setSlideState("idle");
   }, [activeCards]);
 
@@ -118,13 +121,20 @@ export function LecturePlayer({
       setAnswers(nextAnswers);
 
       if (currentIndex + 1 >= totalCards) {
-        setIsCompleted(true);
         // 新しく卒業対象になったカード（今回正解したカード）を初期状態で全選択
         const correctIds = Object.entries(nextAnswers)
           .filter(([_, res]) => res === "correct")
           .map(([id]) => id);
         setSelectedGraduationIds(new Set(correctIds));
         onFinish?.(nextAnswers);
+
+        // 間違えた問題がある場合は「間違えた問題の復習確認画面」を経由
+        const hasMistakes = Object.values(nextAnswers).some((res) => res === "incorrect");
+        if (hasMistakes) {
+          setIsShowingMistakesReview(true);
+        } else {
+          setIsCompleted(true);
+        }
         return;
       }
 
@@ -198,13 +208,14 @@ export function LecturePlayer({
     setIsFlipped(false);
     setAnswers({});
     setIsCompleted(false);
+    setIsShowingMistakesReview(false);
     setSlideState("idle");
   };
 
   // キーボード操作対応
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCompleted) return;
+      if (isCompleted || isShowingMistakesReview) return;
 
       if (e.key === "Escape") {
         onClose();
@@ -235,7 +246,16 @@ export function LecturePlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleFlip, handleCorrect, handleIncorrect, handlePrev, isFlipped, isCompleted, onClose]);
+  }, [
+    handleFlip,
+    handleCorrect,
+    handleIncorrect,
+    handlePrev,
+    isFlipped,
+    isCompleted,
+    isShowingMistakesReview,
+    onClose,
+  ]);
 
   // スライドイン・アウトのアニメーションスタイル
   const getSlideStyle = () => {
@@ -299,6 +319,113 @@ export function LecturePlayer({
             講義画面に戻る
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // 間違えた問題がある場合の経由画面
+  if (isShowingMistakesReview) {
+    const incorrectCards = activeCards.filter((c) => answers[c.id] === "incorrect");
+
+    const handleStartMistakesReview = () => {
+      setActiveCards(incorrectCards);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      setAnswers({});
+      setIsShowingMistakesReview(false);
+      setIsCompleted(false);
+      setSlideState("idle");
+    };
+
+    const handleGoToResult = () => {
+      setIsShowingMistakesReview(false);
+      setIsCompleted(true);
+    };
+
+    return (
+      <div className="animate-fadeIn fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md select-none">
+        {/* 上部ヘッダー（固定） */}
+        <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-6 py-4">
+          <div className="space-y-0.5">
+            <h2 className="text-sm font-bold text-white sm:text-base">{lectureTitle}</h2>
+            <p className="text-xs text-rose-400">
+              間違えた問題: <strong className="font-bold">{incorrectCards.length}</strong> 問
+            </p>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            title="閉じる"
+          >
+            <XIcon size={18} />
+          </button>
+        </header>
+
+        {/* メインスクロール領域: 間違えた問題文の一覧 */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 pb-28 sm:px-6">
+          <div className="mx-auto max-w-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300">
+                間違えた問題一覧 ({incorrectCards.length}問)
+              </span>
+              <span className="text-[11px] text-slate-400">間違えた問題のみを復習できます</span>
+            </div>
+
+            <div className="space-y-2.5">
+              {incorrectCards.map((card, idx) => (
+                <div
+                  key={card.id}
+                  className="rounded-xl border border-rose-950/60 bg-rose-950/20 p-4 transition"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-[11px]">
+                      <span className="font-mono text-slate-500">Q{idx + 1}.</span>
+                      <span className="rounded-full border border-rose-800/80 bg-rose-950/80 px-2 py-0.5 text-[10px] font-bold text-rose-300">
+                        ❌ 不正解
+                      </span>
+                      {card.badge && <span className="text-slate-400">({card.badge})</span>}
+                    </div>
+
+                    <p className="text-xs font-semibold whitespace-pre-wrap text-slate-100">
+                      {card.front}
+                    </p>
+
+                    <div className="mt-2 rounded-lg border border-slate-800/80 bg-slate-900/70 p-2.5">
+                      <span className="mb-0.5 block text-[10px] font-bold text-slate-400">
+                        正解・解説
+                      </span>
+                      <p className="text-xs whitespace-pre-wrap text-emerald-300">{card.back}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 画面下部に fixed のフッターボタン */}
+        <footer className="fixed right-0 bottom-0 left-0 z-10 border-t border-slate-800 bg-slate-900/95 p-4 backdrop-blur">
+          <div className="mx-auto flex max-w-md items-center justify-center space-x-3">
+            {/* セカンダリボタン: 結果画面へ */}
+            <button
+              type="button"
+              onClick={handleGoToResult}
+              className="flex-1 cursor-pointer rounded-xl border border-slate-700/60 bg-slate-800 py-3 text-xs font-semibold text-slate-200 transition hover:bg-slate-700"
+            >
+              結果画面へ
+            </button>
+
+            {/* プライマリボタン: 間違えた問題を復習 */}
+            <button
+              type="button"
+              onClick={handleStartMistakesReview}
+              className="flex-1 cursor-pointer rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500"
+            >
+              間違えた問題を復習
+            </button>
+          </div>
+        </footer>
       </div>
     );
   }

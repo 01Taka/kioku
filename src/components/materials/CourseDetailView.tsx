@@ -24,6 +24,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     getLectureTrainingQueue,
     answerLectureTrainingCard,
     graduateRecommendedCardsInLecture,
+    batchGraduateCards,
   } = useAppStore();
 
   const course = courses.find((c) => c.id === courseId);
@@ -316,9 +317,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                     } else {
                       const hours = Math.ceil(totalMinutes / 60);
                       rightSideContent = (
-                        <span className="font-mono text-xs text-slate-400">
-                          あと {hours}時間
-                        </span>
+                        <span className="font-mono text-xs text-slate-400">あと {hours}時間</span>
                       );
                     }
                   }
@@ -549,6 +548,10 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
             }
           }}
           recommendedCount={practiceSession.recommendedCount}
+          onGraduateSelected={(cardIds) => {
+            const count = batchGraduateCards(cardIds);
+            return count;
+          }}
           onGraduateRecommended={() => {
             if (practiceSession.lectureIdForGraduation) {
               const count = graduateRecommendedCardsInLecture(

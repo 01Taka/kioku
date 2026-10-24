@@ -248,6 +248,27 @@ export function LectureEditView({
                             <span>カードを編集</span>
                           </button>
 
+                          {/* カードを卒業（既に卒業済みならdisabled） */}
+                          <button
+                            type="button"
+                            disabled={phase === "GRADUATED"}
+                            onClick={() => {
+                              setOpenMenuCardId(null);
+                              setCardPhase(card.id, "GRADUATED");
+                            }}
+                            className={`flex w-full items-center space-x-2 px-3 py-2 text-left ${
+                              phase === "GRADUATED"
+                                ? "cursor-not-allowed text-slate-500 opacity-40"
+                                : "cursor-pointer text-emerald-400 hover:bg-slate-800"
+                            }`}
+                            title={
+                              phase === "GRADUATED" ? "既に卒業済みです" : "共通プールへ卒業させる"
+                            }
+                          >
+                            <span className="text-[13px]">🎓</span>
+                            <span>{phase === "GRADUATED" ? "卒業済み" : "カードを卒業"}</span>
+                          </button>
+
                           {/* カードを休止 / 再開 */}
                           <button
                             type="button"

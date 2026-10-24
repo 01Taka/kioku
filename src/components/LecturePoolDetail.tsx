@@ -44,6 +44,7 @@ export function LecturePoolDetail() {
     isDuplicateOfLastBatch,
     setCardPhase,
     graduateRecommendedCardsInLecture,
+    batchGraduateCards,
     toggleCardSuspension,
     answerLectureTrainingCard,
     getLectureProgress,
@@ -1177,6 +1178,10 @@ export function LecturePoolDetail() {
             }
           }}
           recommendedCount={progress?.graduationRecommendedCount ?? 0}
+          onGraduateSelected={(cardIds) => {
+            const count = batchGraduateCards(cardIds);
+            return count;
+          }}
           onGraduateRecommended={() => {
             const count = graduateRecommendedCardsInLecture(selectedLecture.id);
             if (count > 0) {

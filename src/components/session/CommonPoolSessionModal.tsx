@@ -406,7 +406,11 @@ export function CommonPoolSessionModal({
               {/* 表面（問題） */}
               <div
                 className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900 p-7 shadow-2xl transition-colors hover:border-slate-700"
-                style={{ backfaceVisibility: "hidden" }}
+                style={{
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "rotateY(0deg) translateZ(1px)",
+                }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
@@ -435,10 +439,11 @@ export function CommonPoolSessionModal({
 
               {/* 裏面（解答） */}
               <div
-                className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-emerald-500/50 bg-linear-to-b from-slate-900 to-emerald-950/30 p-7 shadow-2xl transition-colors hover:border-emerald-500/70"
+                className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-emerald-500/50 bg-slate-900 bg-linear-to-b from-slate-900 to-emerald-950 p-7 shadow-2xl transition-colors hover:border-emerald-500/70"
                 style={{
                   backfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "rotateY(180deg) translateZ(1px)",
                 }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">

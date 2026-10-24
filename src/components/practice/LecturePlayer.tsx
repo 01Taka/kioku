@@ -594,16 +594,20 @@ export function LecturePlayer({
             >
               {/* 表面 (問題面) — チェック区分 3 / 2 / 1 でカード色を分ける */}
               <div
-                className={`absolute inset-0 flex flex-col justify-between rounded-2xl border p-7 shadow-2xl transition-colors ${
+                className={`absolute inset-0 flex flex-col justify-between rounded-2xl border bg-slate-900 p-7 shadow-2xl transition-colors ${
                   currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
-                    ? "border-emerald-500/60 bg-linear-to-b from-slate-900 to-emerald-950/35 hover:border-emerald-400/80"
+                    ? "border-emerald-500/60 bg-linear-to-b from-slate-900 to-emerald-950 hover:border-emerald-400/80"
                     : currentCard.checkCategory === "PRIORITY_2_UNATTEMPTED"
-                      ? "border-indigo-500/60 bg-linear-to-b from-slate-900 to-indigo-950/35 hover:border-indigo-400/80"
+                      ? "border-indigo-500/60 bg-linear-to-b from-slate-900 to-indigo-950 hover:border-indigo-400/80"
                       : currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK"
-                        ? "border-amber-500/60 bg-linear-to-b from-slate-900 to-amber-950/35 hover:border-amber-400/80"
+                        ? "border-amber-500/60 bg-linear-to-b from-slate-900 to-amber-950 hover:border-amber-400/80"
                         : "border-slate-800 bg-slate-900 hover:border-slate-700"
                 }`}
-                style={{ backfaceVisibility: "hidden" }}
+                style={{
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "rotateY(0deg) translateZ(1px)",
+                }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <div className="flex flex-wrap items-center gap-2">
@@ -653,16 +657,17 @@ export function LecturePlayer({
 
               {/* 裏面 (解答面) — チェック区分 3 / 2 / 1 でカード色を分ける */}
               <div
-                className={`absolute inset-0 flex flex-col justify-between rounded-2xl border p-7 shadow-2xl transition-colors ${
+                className={`absolute inset-0 flex flex-col justify-between rounded-2xl border bg-slate-900 p-7 shadow-2xl transition-colors ${
                   currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED"
-                    ? "border-emerald-400/70 bg-linear-to-b from-slate-900 to-emerald-950/45"
+                    ? "border-emerald-400/70 bg-linear-to-b from-slate-900 to-emerald-950"
                     : currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK"
-                      ? "border-amber-400/70 bg-linear-to-b from-slate-900 to-amber-950/45"
-                      : "border-indigo-500/60 bg-linear-to-b from-slate-900 to-indigo-950/40"
+                      ? "border-amber-400/70 bg-linear-to-b from-slate-900 to-amber-950"
+                      : "border-indigo-500/60 bg-linear-to-b from-slate-900 to-indigo-950"
                 }`}
                 style={{
                   backfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "rotateY(180deg) translateZ(1px)",
                 }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">

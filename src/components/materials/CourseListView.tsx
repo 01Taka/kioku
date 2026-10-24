@@ -155,34 +155,28 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
 
                   {/* 3フェーズ進捗バー（卒業済み / 現在チェック可能 / それ以外） */}
                   {totalCards > 0 ? (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between font-mono text-[10px] text-slate-400">
-                        <span className="text-emerald-400">卒業済み: {graduatedCount}</span>
-                        <span className="text-amber-400">
-                          現在チェック可能: {checkAvailableCount}
-                        </span>
-                        <span className="text-slate-400">それ以外: {otherCount}</span>
-                      </div>
-                      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                        <div
-                          className="h-full bg-emerald-500"
-                          style={{
-                            width: `${(graduatedCount / totalCards) * 100}%`,
-                          }}
-                        />
-                        <div
-                          className="h-full bg-amber-400"
-                          style={{
-                            width: `${(checkAvailableCount / totalCards) * 100}%`,
-                          }}
-                        />
-                        <div
-                          className="h-full bg-slate-600"
-                          style={{
-                            width: `${(otherCount / totalCards) * 100}%`,
-                          }}
-                        />
-                      </div>
+                    <div
+                      className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800"
+                      title={`卒業済み: ${graduatedCount} / 現在チェック可能: ${checkAvailableCount} / それ以外: ${otherCount}`}
+                    >
+                      <div
+                        className="h-full bg-emerald-500"
+                        style={{
+                          width: `${(graduatedCount / totalCards) * 100}%`,
+                        }}
+                      />
+                      <div
+                        className="h-full bg-amber-400"
+                        style={{
+                          width: `${(checkAvailableCount / totalCards) * 100}%`,
+                        }}
+                      />
+                      <div
+                        className="h-full bg-slate-600"
+                        style={{
+                          width: `${(otherCount / totalCards) * 100}%`,
+                        }}
+                      />
                     </div>
                   ) : (
                     <div className="text-[11px] text-slate-500 italic">カード未登録</div>

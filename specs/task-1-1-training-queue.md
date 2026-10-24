@@ -1,6 +1,7 @@
 # 仕様: 講義特訓モードの出題対象選定（Task 1-1）
 
 ## 1. 概要・解くべき問い
+
 講義専用プール（短期ステージ）の通常特訓モードにおいて、**「いま出題すべきカード」**を正確に抽出する。
 
 ---
@@ -19,6 +20,7 @@
      - ※ `card.lecturePool.lastCorrectAt + waitingHours <= now`
 
 ### 出題対象外（除外）となるカード
+
 - `isSuspended === true`（休止中）
 - `lecturePool.phase === 'ACTIVE'`（共通プールへ卒業済み）
 - `lecturePool.phase === 'WAITING'` かつ `isWaitingCardLocked(...) === true`（8時間ロック中）
@@ -30,11 +32,11 @@
 ```typescript
 export interface LectureTrainingQueueResult {
   lectureId: string;
-  cards: Card[];                  // 出題対象カード一覧
-  unmemorizedCount: number;       // 出題対象中の未暗記枚数
-  unlockedWaitingCount: number;   // 出題対象中の待機解除枚数
-  lockedWaitingCount: number;     // ロック中で出題できない枚数
-  earliestUnlockAt: string | null;// 最短のロック解除予定日時（ISO 8601）
+  cards: Card[]; // 出題対象カード一覧
+  unmemorizedCount: number; // 出題対象中の未暗記枚数
+  unlockedWaitingCount: number; // 出題対象中の待機解除枚数
+  lockedWaitingCount: number; // ロック中で出題できない枚数
+  earliestUnlockAt: string | null; // 最短のロック解除予定日時（ISO 8601）
 }
 ```
 

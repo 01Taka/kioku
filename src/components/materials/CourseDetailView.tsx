@@ -1,7 +1,7 @@
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
-import { ArrowLeftIcon,EditIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
+import { ArrowLeftIcon, EditIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
 import { LecturePlayer, type PracticeCardItem } from "../practice/LecturePlayer";
 import { LectureEditView } from "./LectureEditView";
 

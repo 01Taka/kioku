@@ -191,13 +191,7 @@ import { useState } from "react";
 import { Task } from "../../../entities/task/model/types";
 import { taskRepository } from "../../../entities/task/api/taskRepository";
 
-export const TaskItem = ({
-  task,
-  onUpdate,
-}: {
-  task: Task;
-  onUpdate: (t: Task) => void;
-}) => {
+export const TaskItem = ({ task, onUpdate }: { task: Task; onUpdate: (t: Task) => void }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -243,8 +237,8 @@ export const TaskItem = ({
 ```tsx
 // Phase 4のロジックはそのまま維持し、マークアップとスタイルのみを更新
 return (
-  <div className="flex items-center justify-between p-3 border-b border-slate-200 hover:bg-slate-50 transition-colors">
-    <label className="flex items-center gap-3 cursor-pointer select-none">
+  <div className="flex items-center justify-between border-b border-slate-200 p-3 transition-colors hover:bg-slate-50">
+    <label className="flex cursor-pointer items-center gap-3 select-none">
       <input
         type="checkbox"
         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
@@ -253,15 +247,13 @@ return (
         disabled={isUpdating}
       />
       <span
-        className={`text-sm ${task.status === "DONE" ? "line-through text-slate-400" : "text-slate-800"}`}
+        className={`text-sm ${task.status === "DONE" ? "text-slate-400 line-through" : "text-slate-800"}`}
       >
         {task.title}
       </span>
     </label>
-    {isUpdating && (
-      <span className="text-xs text-slate-400 animate-pulse">保存中...</span>
-    )}
-    {error && <span className="text-xs text-red-500 font-medium">{error}</span>}
+    {isUpdating && <span className="animate-pulse text-xs text-slate-400">保存中...</span>}
+    {error && <span className="text-xs font-medium text-red-500">{error}</span>}
   </div>
 );
 ```

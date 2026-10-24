@@ -8,7 +8,7 @@ import {
   TypeConvert,
 } from "ts-fsrs";
 
-import { type ActiveRating,getNextCutoffTime, SYSTEM_CONSTANTS } from "../types/schema";
+import { type ActiveRating, getNextCutoffTime, SYSTEM_CONSTANTS } from "../types/schema";
 
 /**
  * システム仕様（目標保持率 0.82、サブデイ無効化）に準拠した FSRS インスタンスを生成

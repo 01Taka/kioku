@@ -1,8 +1,8 @@
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useAppStore } from "../store/useAppStore";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
-import { CheckIcon,SparklesIcon, XIcon } from "./icons";
+import { CheckIcon, SparklesIcon, XIcon } from "./icons";
 
 // AlertTriangleIcon がなければ作成
 function WarningIcon({ size = 16, className = "" }: { size?: number; className?: string }) {

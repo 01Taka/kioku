@@ -1,8 +1,8 @@
 import React from "react";
 
 import { useAppStore } from "../../store/useAppStore";
-import type { Card,Course } from "../../types/schema";
-import { ArrowLeftIcon,BookOpenIcon, HomeIcon, SettingsIcon } from "../icons";
+import type { Card, Course } from "../../types/schema";
+import { ArrowLeftIcon, BookOpenIcon, HomeIcon, SettingsIcon } from "../icons";
 
 export type NavCategory = "HOME" | "MATERIALS";
 export type HomeSubTab = "MAIN" | "MISTAKES" | "FORGOTTEN";

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef,useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { LectureCheckCategory } from "../../types/schema";
-import { ArrowUpRightIcon,ShuffleIcon, XIcon } from "../icons";
+import { ArrowUpRightIcon, ShuffleIcon, XIcon } from "../icons";
 
 export interface PracticeCardItem {
   id: string;

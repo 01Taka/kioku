@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
-import { BookOpenIcon,PlusIcon, TrashIcon } from "../icons";
+import { BookOpenIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface CourseListViewProps {
   onSelectCourse: (courseId: string) => void;

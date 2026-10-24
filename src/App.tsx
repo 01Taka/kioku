@@ -1,4 +1,4 @@
-import { useEffect,useState } from "react";
+import { useEffect, useState } from "react";
 
 import { HomeView } from "./components/home/HomeView";
 import { SettingsIcon } from "./components/icons";

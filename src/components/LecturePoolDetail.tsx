@@ -1,8 +1,8 @@
-import React, { useEffect,useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { calculateCardRetrievability } from "../services/fsrsService";
 import { useAppStore } from "../store/useAppStore";
-import type { Card,LectureCardPhase, LectureCheckCategory, PriorityMode } from "../types/schema";
+import type { Card, LectureCardPhase, LectureCheckCategory, PriorityMode } from "../types/schema";
 import { isWaitingCardLocked } from "../types/schema";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
 import { AiBatchImportModal } from "./AiBatchImportModal";

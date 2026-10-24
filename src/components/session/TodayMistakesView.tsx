@@ -1,7 +1,7 @@
-import { useEffect, useMemo,useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
-import { CheckIcon,UndoIcon, XIcon } from "../icons";
+import { CheckIcon, UndoIcon, XIcon } from "../icons";
 
 export interface TodayMistakesSectionProps {
   /** コンパクト表示（セッションブレイク画面への埋め込み時） */

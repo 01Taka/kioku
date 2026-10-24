@@ -1,9 +1,11 @@
 # Spec: Milestone 2 & Task 5-1 — 共通プール出題キュー構築エンジン & 想起確率トリアージ
 
 ## 1. 概要 (Task 2-1, 2-2, 2-3, 2-4, 5-1)
+
 共通プール（`lecturePool.phase === "ACTIVE"` かつ `commonPool !== null`）に所属するカードから、午前04:00の日付変更線・3色カラーコーディング・カテゴリー優先度（強制/優先/通常）・リカバリー室隔離（$R < 0.35$）を統合した日次復習キュー（10問マイクロセッション用）を生成する。
 
 ## 2. 判定ルールと不変条件
+
 1. **午前04:00日付変更線 (`dateUtils.ts`)**:
    - `getActiveDateKey(now, cutoffHour = 4)`: `getCutoffTime(now, cutoffHour)` のローカル日付 `YYYY-MM-DD` を返す。
    - セッション状態 `lastActiveDateKey` が現在の `getActiveDateKey(now)` と異なる場合、`todayMistakeCardIds` を空配列 `[]` に自動リセットする（`retryCardIds` は正解するまで維持される）。

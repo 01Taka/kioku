@@ -5,7 +5,7 @@ import type {
   LectureCheckQueueItem,
   LectureTrainingQueueResult,
 } from "../types/schema";
-import { graduateCardToCommonPool,isWaitingCardLocked, SYSTEM_CONSTANTS } from "../types/schema";
+import { graduateCardToCommonPool, isWaitingCardLocked, SYSTEM_CONSTANTS } from "../types/schema";
 
 /**
  * 講義専用プールの「チェック」モードで出題すべきカード一覧を抽出する純粋関数

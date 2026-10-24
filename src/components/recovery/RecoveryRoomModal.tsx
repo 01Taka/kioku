@@ -1,7 +1,7 @@
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
-import { CheckIcon, PlayIcon,UndoIcon, XIcon } from "../icons";
+import { CheckIcon, PlayIcon, UndoIcon, XIcon } from "../icons";
 import { LecturePlayer, type PracticeCardItem } from "../practice/LecturePlayer";
 
 export interface RecoveryRoomModalProps {

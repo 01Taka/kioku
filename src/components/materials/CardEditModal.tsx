@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { EditIcon,XIcon } from "../icons";
+import { EditIcon, XIcon } from "../icons";
 
 interface CardEditModalProps {
   initialFront: string;

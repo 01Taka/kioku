@@ -147,15 +147,15 @@
   - $R < 0.35$ のカードを日々の共通プール出題から自動除外
   - 【例外規定】当該講義が「強制出題（FORCE）」に設定されている期間中は隔離をバイパスして出題
   - 成果物: `src/services/fsrsService.ts`, `src/utils/queueBuilder.ts`
-- [ ] **Task 5-2: リカバリー室専用画面の作成 (Read/UI)**
+- [x] **Task 5-2: リカバリー室専用画面の作成 (Read/UI)**
   - 隔離されたカードを所属情報（`科目名 > 講義回名`）とともに一覧表示
   - 現在の推定想起確率（$R$ 値）の表示
   - 成果物: `src/components/recovery/RecoveryRoomModal.tsx`
-- [ ] **Task 5-3: リカバリー室の3大救済アクションの実装 (Update)**
+- [x] **Task 5-3: リカバリー室の3大救済アクションの実装 (Update)**
   - アクション1: 「すべて講義プールに戻す（未暗記として再特訓）」
   - アクション2: 「選択して講義プールに戻す」
   - アクション3: 「このまま共通プールでテストする（正解なら復帰、不正解なら即講義プールへ降格）」
-  - 成果物: `src/store/useAppStore.ts`
+  - 成果物: `src/components/recovery/RecoveryRoomModal.tsx`, `src/store/useAppStore.ts`
 
 ---
 

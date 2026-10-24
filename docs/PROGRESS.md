@@ -162,31 +162,27 @@
 ### Milestone 6: アプリケーション全体統合・設定 & バックアップ
 > **目的:** 各画面のナビゲーション統合、アプリ設定、バックアップ復元を完成させる。
 
-- [ ] **Task 6-1: メイン画面ナビゲーション（タブ / ヘッダー）の統合 (UI)**
+- [x] **Task 6-1: メイン画面ナビゲーション（タブ / ヘッダー）の統合 (UI)**
   - 「講義プール管理」「今日の共通復習（10問セッション）」「今日間違えた問題」「リカバリー室」へのアクセス導線
   - リカバリー室に対象カードがある場合のバッジ通知
   - 成果物: `src/components/HeaderNav.tsx`, `src/App.tsx`
-- [ ] **Task 6-2: アプリケーション設定モーダルの実装 (Read/Update)**
+- [x] **Task 6-2: アプリケーション設定モーダルの実装 (Read/Update)**
   - 目標保持率（`requestRetention` デフォルト: 0.82）
   - 先取り枠（`enableEarlyReview` ON/OFF）
   - 出題順（`sortOrder`: due昇順 / カテゴリ内シャッフル）
   - 講義待機ロック時間（`waitingDurationHours` デフォルト: 8時間）
   - 成果物: `src/components/settings/SettingsModal.tsx`
-- [ ] **Task 6-3: データのエクスポート & マージインポート機能の実装 (I/O)**
+- [x] **Task 6-3: データのエクスポート & マージインポート機能の実装 (I/O)**
   - 仕様書 5章・10章準拠の `AppBackupData` / `ExportCardRecord` JSONエクスポート
   - 既存の科目名・講義名を維持しながら差分追記する `importBackupData` のUI統合
-  - 成果物: `src/components/settings/DataBackupSection.tsx`
-- [ ] **Task 6-4: 全体E2E動作検証 & 最終仕上げ**
+  - 成果物: `src/components/settings/SettingsModal.tsx`, `src/store/useAppStore.ts`
+- [x] **Task 6-4: 全体E2E動作検証 & 最終仕上げ**
   - 新規カード作成 ➔ 講義特訓（8h待機） ➔ 卒業 ➔ 共通プール出題（10問） ➔ ミス ➔ 翌日オレンジリベンジ ➔ 降格 のフルサイクルの結合テスト
   - TypeScript 型チェック & ビルド検証
 
 ---
 
-## 🧭 直近の次のアクション（Next Step）
+## 🎉 全マイルストーン完了ステータス
 
-> **Milestone 1 / Task 1-2:**  
-> **「特訓回答（〇 / ×）による3段階状態遷移を実装する (Update)」**
-> - 未暗記カードの正解で `WAITING` 待機へ移行（8hロック開始）
-> - 待機解除カードの正解で卒業処理（ACTIVE）へ昇格
-> - いずれのカードも不正解（×）で `UNMEMORIZED` へ逆戻り
-> - `src/store/useAppStore.ts` に `answerLectureTrainingCard` を実装します。
+> **Milestone 1 〜 Milestone 6（Task 1-1 〜 Task 6-4）すべて完了済み**  
+> - `docs/SYSTEM.md` の全仕様（2段階キュー、8時間待機ロック、FSRS長期ステージ、午前04:00日付変更線、3色カラーコーディング、強制/優先/通常カテゴリ合流、10問マイクロセッション＆ブレイク画面、今日間違えた問題ハブ、リカバリー室 $R < 0.35$ 救済トリアージ、設定＆マージインポート）の実装およびE2E検証・本番ビルド検証が完了しています。

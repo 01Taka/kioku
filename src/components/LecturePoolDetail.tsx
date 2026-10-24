@@ -268,7 +268,7 @@ export function LecturePoolDetail() {
   };
 
   return (
-    <main className="flex-1 bg-slate-950 text-slate-100 flex flex-col h-screen overflow-hidden">
+    <main className="flex-1 bg-slate-950 text-slate-100 flex flex-col h-full overflow-hidden">
       {/* 講義ヘッダー */}
       <header className="p-5 border-b border-slate-800 bg-slate-900/60 backdrop-blur">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">

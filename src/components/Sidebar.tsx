@@ -96,7 +96,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-80 flex-shrink-0 bg-slate-900 text-slate-100 border-r border-slate-800 flex flex-col h-screen select-none">
+    <aside className="w-80 flex-shrink-0 bg-slate-900 text-slate-100 border-r border-slate-800 flex flex-col h-full select-none">
       {/* ヘッダー */}
       <div className="p-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-2">

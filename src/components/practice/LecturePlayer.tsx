@@ -434,7 +434,7 @@ export function LecturePlayer({
 
         {/* スライドイン・アウト用ラッパー（カードのみが上下にスライド移動する） */}
         <div
-          className="w-full min-h-80 max-h-115 h-72 sm:h-80 will-change-transform"
+          className="w-full min-h-80 max-h-120 h-80 sm:h-88 will-change-transform"
           style={getSlideStyle()}
         >
           {/* ① 3D フリップアニメーション用コンテナ */}
@@ -471,8 +471,15 @@ export function LecturePlayer({
                   <span className="text-[11px] text-indigo-400 font-mono">Q.{currentIndex + 1}</span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-50 text-center">
-                  <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
+                <div className="my-auto py-4 overflow-y-auto max-h-56 flex items-center justify-center">
+                  <p
+                    className={`font-bold text-white whitespace-pre-wrap leading-relaxed select-text ${
+                      currentCard.front.length > 70 ||
+                      currentCard.front.split("\n").length >= 3
+                        ? "text-base sm:text-lg text-left w-full px-2"
+                        : "text-xl sm:text-2xl text-center"
+                    }`}
+                  >
                     {currentCard.front}
                   </p>
                 </div>
@@ -497,8 +504,15 @@ export function LecturePlayer({
                   <span className="text-[11px] text-indigo-400 font-mono">A.{currentIndex + 1}</span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-50 text-center">
-                  <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
+                <div className="my-auto py-4 overflow-y-auto max-h-56 flex items-center justify-center">
+                  <p
+                    className={`font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text ${
+                      currentCard.back.length > 70 ||
+                      currentCard.back.split("\n").length >= 3
+                        ? "text-sm sm:text-base text-left w-full px-2"
+                        : "text-lg sm:text-xl text-center"
+                    }`}
+                  >
                     {currentCard.back}
                   </p>
                 </div>

@@ -4,7 +4,7 @@ import { REVIEW_CATEGORY_THEME } from "../../types/schema";
 import type { CommonPoolQueueItem } from "../../utils/queueBuilder";
 import { formatFutureDueNotice } from "../../utils/dateUtils";
 import { TodayMistakesSection } from "./TodayMistakesView";
-import { XIcon, PlayIcon } from "../icons";
+import { XIcon, PlayIcon, UndoIcon } from "../icons";
 
 export interface CommonPoolSessionModalProps {
   onClose: () => void;
@@ -17,7 +17,11 @@ type SlideAnimationState =
   | "slide-in";
 
 export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps) {
-  const { getCommonPoolQueue, answerCommonPoolCard } = useAppStore();
+  const {
+    getCommonPoolQueue,
+    answerCommonPoolCard,
+    batchDemoteToLecturePool,
+  } = useAppStore();
 
   // セッション開始時点の10問バッチスナップショット
   const [batchItems, setBatchItems] = useState<CommonPoolQueueItem[]>([]);
@@ -107,6 +111,55 @@ export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps)
       }, 160);
     },
     [currentItem, slideState, answerCommonPoolCard, currentIndex, totalInBatch],
+  );
+
+  // セッション中の即時降格アクション（この問題を今すぐ所属講義の未暗記プールへ戻す）
+  const handleInstantDemote = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!currentItem || slideState !== "idle") return;
+
+      batchDemoteToLecturePool([currentItem.card.id]);
+
+      setSessionStats((prev) => ({
+        ...prev,
+        againCount: prev.againCount + 1,
+        completedBatches:
+          currentIndex + 1 >= totalInBatch
+            ? prev.completedBatches + 1
+            : prev.completedBatches,
+      }));
+
+      if (currentIndex + 1 >= totalInBatch) {
+        setIsBreakScreen(true);
+        return;
+      }
+
+      setSlideState("slide-out-up");
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+
+      transitionTimeoutRef.current = window.setTimeout(() => {
+        setCurrentIndex((prev) => prev + 1);
+        setIsFlipped(false);
+        setSlideState("prepare-bottom");
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setSlideState("slide-in");
+            transitionTimeoutRef.current = window.setTimeout(() => {
+              setSlideState("idle");
+            }, 200);
+          });
+        });
+      }, 160);
+    },
+    [
+      currentItem,
+      slideState,
+      batchDemoteToLecturePool,
+      currentIndex,
+      totalInBatch,
+    ],
   );
 
   // キーボード操作対応
@@ -374,7 +427,7 @@ export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps)
 
         {/* スライドイン・アウト用ラッパー */}
         <div
-          className="w-full min-h-80 max-h-115 h-72 sm:h-80 will-change-transform"
+          className="w-full min-h-80 max-h-120 h-80 sm:h-88 will-change-transform"
           style={getSlideStyle()}
         >
           <div className="w-full h-full" style={{ perspective: "1000px" }}>
@@ -402,8 +455,15 @@ export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps)
                   </span>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-50 text-center">
-                  <p className="text-xl sm:text-2xl font-bold text-white whitespace-pre-wrap leading-relaxed select-text">
+                <div className="my-auto py-4 overflow-y-auto max-h-56 flex items-center justify-center">
+                  <p
+                    className={`font-bold text-white whitespace-pre-wrap leading-relaxed select-text ${
+                      currentItem.card.front.length > 70 ||
+                      currentItem.card.front.split("\n").length >= 3
+                        ? "text-base sm:text-lg text-left w-full px-2"
+                        : "text-xl sm:text-2xl text-center"
+                    }`}
+                  >
                     {currentItem.card.front}
                   </p>
                 </div>
@@ -425,13 +485,33 @@ export function CommonPoolSessionModal({ onClose }: CommonPoolSessionModalProps)
                   <span className="font-semibold uppercase tracking-wider text-[11px] text-emerald-300">
                     裏面（解答）
                   </span>
-                  <span className="text-[11px] text-emerald-400 font-mono">
-                    A.{currentIndex + 1}
-                  </span>
+
+                  <div className="flex items-center space-x-2">
+                    {/* 即時講義プール降格ボタン */}
+                    <button
+                      type="button"
+                      onClick={handleInstantDemote}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-amber-900/80 text-slate-300 hover:text-amber-200 border border-slate-700 hover:border-amber-600/60 text-[10px] font-medium flex items-center space-x-1 transition cursor-pointer"
+                      title="このカードのFSRS履歴をリセットし、今すぐ所属講義の未暗記プールへ戻して次の問題へ進む"
+                    >
+                      <UndoIcon size={10} />
+                      <span>講義プールへ戻す</span>
+                    </button>
+                    <span className="text-[11px] text-emerald-400 font-mono">
+                      A.{currentIndex + 1}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="my-auto py-4 overflow-y-auto max-h-50 text-center">
-                  <p className="text-lg sm:text-xl font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text">
+                <div className="my-auto py-4 overflow-y-auto max-h-56 flex items-center justify-center">
+                  <p
+                    className={`font-medium text-slate-100 whitespace-pre-wrap leading-relaxed select-text ${
+                      currentItem.card.back.length > 70 ||
+                      currentItem.card.back.split("\n").length >= 3
+                        ? "text-sm sm:text-base text-left w-full px-2"
+                        : "text-lg sm:text-xl text-center"
+                    }`}
+                  >
                     {currentItem.card.back}
                   </p>
                 </div>

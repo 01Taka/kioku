@@ -5,6 +5,7 @@ import { isWaitingCardLocked } from "../types/schema";
 import { AiBatchImportModal } from "./AiBatchImportModal";
 import { LecturePlayer, type PracticeCardItem } from "./practice/LecturePlayer";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
+import { calculateCardRetrievability } from "../services/fsrsService";
 import {
   PlusIcon,
   TrashIcon,
@@ -19,6 +20,8 @@ import {
   SlidersIcon,
   PlayIcon,
   ShuffleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from "./icons";
 
 export function LecturePoolDetail() {
@@ -27,6 +30,7 @@ export function LecturePoolDetail() {
     lectures,
     cards,
     settings,
+    sessionState,
     selectedLectureId,
     updateLecture,
     deleteLecture,
@@ -72,14 +76,16 @@ export function LecturePoolDetail() {
   // カード追加用フォーム状態
   const [frontInput, setFrontInput] = useState("");
   const [backInput, setBackInput] = useState("");
+  const [isCreateFormExpanded, setIsCreateFormExpanded] = useState(false);
 
   // カード編集用モーダル状態
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [editFront, setEditFront] = useState("");
   const [editBack, setEditBack] = useState("");
 
-  // フィルター
+  // フィルター & 検索
   const [phaseFilter, setPhaseFilter] = useState<LectureCardPhase | "ALL" | "SUSPENDED" | "TRAINING">("ALL");
+  const [cardSearchQuery, setCardSearchQuery] = useState("");
 
   // 講義名編集状態
   const [isEditingLectureName, setIsEditingLectureName] = useState(false);
@@ -101,13 +107,24 @@ export function LecturePoolDetail() {
 
   const filteredCards = useMemo(() => {
     const trainingCardIds = new Set(trainingQueue?.cards.map((c) => c.id) ?? []);
+    const q = cardSearchQuery.trim().toLowerCase();
     return lectureCards.filter((card) => {
+      if (q) {
+        const matchFront = card.front.toLowerCase().includes(q);
+        const matchBack = card.back.toLowerCase().includes(q);
+        if (!matchFront && !matchBack) return false;
+      }
       if (phaseFilter === "ALL") return true;
       if (phaseFilter === "SUSPENDED") return card.isSuspended;
       if (phaseFilter === "TRAINING") return trainingCardIds.has(card.id);
       return card.lecturePool.phase === phaseFilter;
     });
-  }, [lectureCards, phaseFilter, trainingQueue]);
+  }, [lectureCards, phaseFilter, trainingQueue, cardSearchQuery]);
+
+  const retryCardSet = useMemo(
+    () => new Set(sessionState.retryCardIds),
+    [sessionState.retryCardIds],
+  );
 
   const progress = selectedLectureId ? getLectureProgress(selectedLectureId) : null;
 
@@ -433,6 +450,35 @@ export function LecturePoolDetail() {
                 </span>
               </div>
             )}
+
+            {/* 3色積み上げプログレスバー（卒業済 / 待機中 / 未暗記） */}
+            {lectureCards.length > 0 && (
+              <div className="w-full pt-1">
+                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden flex">
+                  <div
+                    className="bg-emerald-500 h-full transition-all duration-300"
+                    style={{
+                      width: `${(progress.activeCount / lectureCards.length) * 100}%`,
+                    }}
+                    title={`卒業済: ${progress.activeCount}枚`}
+                  />
+                  <div
+                    className="bg-amber-400 h-full transition-all duration-300"
+                    style={{
+                      width: `${(progress.waitingCount / lectureCards.length) * 100}%`,
+                    }}
+                    title={`待機中: ${progress.waitingCount}枚`}
+                  />
+                  <div
+                    className="bg-slate-500 h-full transition-all duration-300"
+                    style={{
+                      width: `${(progress.unmemorizedCount / lectureCards.length) * 100}%`,
+                    }}
+                    title={`未暗記: ${progress.unmemorizedCount}枚`}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </header>
@@ -483,15 +529,30 @@ export function LecturePoolDetail() {
           </div>
         )}
 
-        {/* 新規カード作成エリア */}
-        <section className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
+        {/* 新規カード作成エリア（省スペース開閉アコーディオン対応） */}
+        <section className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCreateFormExpanded((prev) => !prev)}
+              className="text-xs font-semibold text-slate-200 hover:text-white flex items-center space-x-2 cursor-pointer py-0.5"
+            >
+              {isCreateFormExpanded || lectureCards.length === 0 ? (
+                <ChevronDownIcon size={14} className="text-indigo-400" />
+              ) : (
+                <ChevronRightIcon size={14} className="text-indigo-400" />
+              )}
               <PlusIcon size={14} className="text-indigo-400" />
-              <span>カードを新規作成</span>
-            </h2>
+              <span>カードを新規作成（手動追加）</span>
+              {!isCreateFormExpanded && lectureCards.length > 0 && (
+                <span className="text-[11px] font-normal text-slate-400 ml-1">
+                  — クリックして入力フォームを開く
+                </span>
+              )}
+            </button>
+
             <div className="flex items-center space-x-3">
-              {/* AI一括取り込み スプリットボタン */}
+              {/* AI一括取り込み スプリットボタン（常時ワンクリック利用可能） */}
               <div className="inline-flex rounded-lg shadow-sm border border-indigo-500/30 overflow-hidden bg-indigo-600/20">
                 <button
                   type="button"
@@ -514,62 +575,90 @@ export function LecturePoolDetail() {
                   <SlidersIcon size={12} />
                 </button>
               </div>
-              <span className="text-[11px] text-slate-400 hidden sm:inline">Ctrl + Enter で登録</span>
+              {(isCreateFormExpanded || lectureCards.length === 0) && (
+                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  Ctrl + Enter で登録
+                </span>
+              )}
             </div>
           </div>
 
-          <form onSubmit={handleAddCard} className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                  表面（問題・問い）
-                </label>
-                <textarea
-                  rows={3}
-                  value={frontInput}
-                  onChange={(e) => setFrontInput(e.target.value)}
-                  onKeyDown={handleKeyDownOnInput}
-                  placeholder="例: オームの法則の公式は？"
-                  className="w-full px-3 py-2 text-xs bg-slate-950 text-white border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
-                />
+          {(isCreateFormExpanded || lectureCards.length === 0) && (
+            <form onSubmit={handleAddCard} className="space-y-3 mt-3 pt-3 border-t border-slate-800/80">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                    表面（問題・問い）
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={frontInput}
+                    onChange={(e) => setFrontInput(e.target.value)}
+                    onKeyDown={handleKeyDownOnInput}
+                    placeholder="例: オームの法則の公式は？"
+                    className="w-full px-3 py-2 text-xs bg-slate-950 text-white border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                    裏面（解答・解説）
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={backInput}
+                    onChange={(e) => setBackInput(e.target.value)}
+                    onKeyDown={handleKeyDownOnInput}
+                    placeholder="例: V = R · I"
+                    className="w-full px-3 py-2 text-xs bg-slate-950 text-white border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                  裏面（解答・解説）
-                </label>
-                <textarea
-                  rows={3}
-                  value={backInput}
-                  onChange={(e) => setBackInput(e.target.value)}
-                  onKeyDown={handleKeyDownOnInput}
-                  placeholder="例: V = R · I"
-                  className="w-full px-3 py-2 text-xs bg-slate-950 text-white border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500 resize-none"
-                />
-              </div>
-            </div>
 
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={!frontInput.trim() || !backInput.trim()}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow transition flex items-center space-x-1.5 cursor-pointer"
-              >
-                <PlusIcon size={14} />
-                <span>カードを追加</span>
-              </button>
-            </div>
-          </form>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={!frontInput.trim() || !backInput.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow transition flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <PlusIcon size={14} />
+                  <span>カードを追加</span>
+                </button>
+              </div>
+            </form>
+          )}
         </section>
 
         {/* カード一覧セクション */}
         <section className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h2 className="text-sm font-bold text-white flex items-center space-x-2">
-              <span>登録カード一覧</span>
-              <span className="text-xs font-mono text-slate-400 font-normal">
-                ({filteredCards.length} / {lectureCards.length}枚)
-              </span>
-            </h2>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            <div className="flex items-center space-x-3">
+              <h2 className="text-sm font-bold text-white flex items-center space-x-2">
+                <span>登録カード一覧</span>
+                <span className="text-xs font-mono text-slate-400 font-normal">
+                  ({filteredCards.length} / {lectureCards.length}枚)
+                </span>
+              </h2>
+
+              {/* カード内キーワード検索 */}
+              <div className="relative w-48 sm:w-60">
+                <input
+                  type="text"
+                  value={cardSearchQuery}
+                  onChange={(e) => setCardSearchQuery(e.target.value)}
+                  placeholder="🔍 問題・解答を検索..."
+                  className="w-full px-2.5 py-1 pr-6 text-xs bg-slate-900 text-slate-100 placeholder-slate-500 border border-slate-800 rounded-lg focus:outline-none focus:border-indigo-500"
+                />
+                {cardSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setCardSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white cursor-pointer"
+                  >
+                    <XIcon size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* フィルタータブ */}
             <div className="flex items-center space-x-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
@@ -671,6 +760,44 @@ export function LecturePoolDetail() {
                               <CheckIcon size={10} />
                               <span>共通プール (卒業)</span>
                             </span>
+                          )}
+
+                          {/* 卒業済みカードの FSRS 詳細情報バッジ (due / R% / リベンジ / 連続ミス) */}
+                          {phase === "ACTIVE" && card.commonPool && (
+                            <>
+                              {retryCardSet.has(card.id) && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-700/70">
+                                  🔁 リベンジ対象
+                                </span>
+                              )}
+                              <span
+                                className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800/90 text-slate-300 border border-slate-700"
+                                title={`次回復習予定日時: ${new Date(card.commonPool.fsrs.due).toLocaleString("ja-JP")}`}
+                              >
+                                📅 次回:{" "}
+                                {new Date(card.commonPool.fsrs.due).getMonth() + 1}/
+                                {new Date(card.commonPool.fsrs.due).getDate()}
+                              </span>
+                              <span
+                                className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800/90 text-indigo-300 border border-slate-700"
+                                title="現在の推定記憶維持率 (Retrievability)"
+                              >
+                                🧠 R:{" "}
+                                {Math.round(
+                                  calculateCardRetrievability(
+                                    card.commonPool.fsrs,
+                                    new Date(nowTick),
+                                    settings.requestRetention,
+                                  ) * 100,
+                                )}
+                                %
+                              </span>
+                              {card.commonPool.consecutiveFailCount > 0 && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950/70 text-rose-300 border border-rose-800/70">
+                                  ⚠️ {card.commonPool.consecutiveFailCount}連続ミス
+                                </span>
+                              )}
+                            </>
                           )}
 
                           {card.isSuspended && (

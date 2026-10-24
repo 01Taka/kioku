@@ -120,6 +120,7 @@ export default function App() {
             />
           ) : activeCourse ? (
             <CourseDetailView
+              key={activeCourse.id}
               courseId={activeCourse.id}
               onBackToCourseList={() => selectCourse(null)}
             />

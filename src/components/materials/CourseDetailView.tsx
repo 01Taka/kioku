@@ -32,17 +32,42 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     [lectures, courseId],
   );
 
-  // 上部タブ（チェック / 復習 / 編集）
-  const [activeTab, setActiveTab] = useState<CourseTab>("CHECK");
-
-  // ① チェックタブ: 単一選択講義ID
-  const [selectedCheckLectureId, setSelectedCheckLectureId] = useState<string | null>(
-    courseLectures[0]?.id || null,
+  // 問題が一問でもある講義のみを抽出（チェック・復習用）
+  const courseLecturesWithCards = useMemo(
+    () => courseLectures.filter((l) => cards.some((c) => c.lectureId === l.id)),
+    [courseLectures, cards],
   );
 
-  // ② 復習タブ: 複数選択講義IDセット
+  // 上部タブ（チェック / 復習 / 編集: 問題が1問もない場合はデフォルトで編集タブ）
+  const [activeTab, setActiveTab] = useState<CourseTab>(() => {
+    return cards.some((c) => c.courseId === courseId) ? "CHECK" : "EDIT";
+  });
+
+  // ① チェックタブ: 単一選択講義ID（問題がある講義を優先選択）
+  const [selectedCheckLectureId, setSelectedCheckLectureId] = useState<string | null>(
+    () => courseLectures.find((l) => cards.some((c) => c.lectureId === l.id))?.id || null,
+  );
+
+  // カードのある講義リストが変化した際のチェック対象同期
+  useEffect(() => {
+    if (courseLecturesWithCards.length > 0) {
+      if (
+        !selectedCheckLectureId ||
+        !courseLecturesWithCards.some((l) => l.id === selectedCheckLectureId)
+      ) {
+        setSelectedCheckLectureId(courseLecturesWithCards[0].id);
+      }
+    } else {
+      setSelectedCheckLectureId(null);
+    }
+  }, [courseLecturesWithCards, selectedCheckLectureId]);
+
+  // ② 復習タブ: 複数選択講義IDセット（問題がある講義のみ初期選択）
   const [selectedReviewLectureIds, setSelectedReviewLectureIds] = useState<Set<string>>(
-    () => new Set(courseLectures.map((l) => l.id)),
+    () =>
+      new Set(
+        courseLectures.filter((l) => cards.some((c) => c.lectureId === l.id)).map((l) => l.id),
+      ),
   );
 
   // ③ 編集タブ: 現在編集中の講義ID
@@ -239,6 +264,8 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     setNewLectureName("");
     setIsAddingLecture(false);
     setSelectedCheckLectureId(created.id);
+    setActiveTab("EDIT");
+    setEditingLectureId(created.id);
   };
 
   if (!course) {
@@ -356,12 +383,12 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
 
           {/* 講義リストをクリックして一つだけ選択 */}
           <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-            {courseLectures.length === 0 ? (
+            {courseLecturesWithCards.length === 0 ? (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 text-center text-xs text-slate-400">
-                講義がありません。「編集」タブから講義を追加してください。
+                チェック可能な問題がある講義がありません。「編集」タブから問題を追加してください。
               </div>
             ) : (
-              courseLectures.map((lecture) => {
+              courseLecturesWithCards.map((lecture) => {
                 const isSelected = selectedCheckLectureId === lecture.id;
                 const queue = getLectureTrainingQueue(
                   lecture.id,
@@ -450,15 +477,15 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
               <button
                 type="button"
                 onClick={() => {
-                  if (selectedReviewLectureIds.size === courseLectures.length) {
+                  if (selectedReviewLectureIds.size === courseLecturesWithCards.length) {
                     setSelectedReviewLectureIds(new Set());
                   } else {
-                    setSelectedReviewLectureIds(new Set(courseLectures.map((l) => l.id)));
+                    setSelectedReviewLectureIds(new Set(courseLecturesWithCards.map((l) => l.id)));
                   }
                 }}
                 className="cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700"
               >
-                {selectedReviewLectureIds.size === courseLectures.length
+                {selectedReviewLectureIds.size === courseLecturesWithCards.length
                   ? "すべて選択解除"
                   : "すべて選択"}
               </button>
@@ -467,12 +494,12 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
 
           {/* 講義リストをクリックしてマルチセレクト */}
           <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-            {courseLectures.length === 0 ? (
+            {courseLecturesWithCards.length === 0 ? (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-8 text-center text-xs text-slate-400">
-                講義がありません。「編集」タブから講義を追加してください。
+                復習可能な問題がある講義がありません。「編集」タブから問題を追加してください。
               </div>
             ) : (
-              courseLectures.map((lecture) => {
+              courseLecturesWithCards.map((lecture) => {
                 const isChecked = selectedReviewLectureIds.has(lecture.id);
                 const lectureCardCount = cards.filter(
                   (c) => c.lectureId === lecture.id && !c.isSuspended,

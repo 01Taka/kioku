@@ -41,6 +41,12 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
     return getCommonPoolQueue().recoveryCards;
   }, [getCommonPoolQueue]);
 
+  // 3. メイン共通プール出題キュー（出題可能カードの有無判定）
+  const commonPoolQueue = useMemo(() => {
+    return getCommonPoolQueue();
+  }, [getCommonPoolQueue]);
+  const hasMainBatch = commonPoolQueue.sessionBatch.length > 0;
+
   // 科目・講義マップ（所属パンくず用）
   const courseMap = useMemo(() => new Map(courses.map((c) => [c.id, c.name])), [courses]);
   const lectureMap = useMemo(() => new Map(lectures.map((l) => [l.id, l.name])), [lectures]);
@@ -200,7 +206,8 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
               <button
                 type="button"
                 onClick={() => setIsMainStartModalOpen(true)}
-                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 sm:w-auto"
+                disabled={!hasMainBatch}
+                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
                 <PlayIcon size={16} />
                 <span>はじめる</span>

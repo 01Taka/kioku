@@ -107,15 +107,15 @@
   - `Rating.Again`（不正解） / `Rating.Good`（正解）のみでの FSRS 計算・パラメータ更新
   - 回答後の `lastReviewedAt = now` 更新
   - 成果物: `src/services/fsrsService.ts`, `src/store/useAppStore.ts`
-- [ ] **Task 3-2: 10問マイクロセッション出題UIの作成 (UI/UX)**
+- [x] **Task 3-2: 10問マイクロセッション出題UIの作成 (UI/UX)**
   - 10問単位での出題（端数の場合は端数枚数で実施）
   - カード上部にカラーバッジ表示（🔁 オレンジ / 🎯 グリーン / ⚡ パープル）
   - パープルカードが含まれる場合の事前案内メッセージ（「最長で○月○日復習予定のカードが含まれます」）
   - 成果物: `src/components/session/CommonPoolSessionModal.tsx`
-- [ ] **Task 3-3: 10問ごとのブレイク画面の実装 (UI/UX)**
+- [x] **Task 3-3: 10問ごとのブレイク画面の実装 (UI/UX)**
   - 10問終了時に休憩画面を表示
   - 「もう10問続ける（残カードがある場合）」「ここで終了する」の選択
-  - 成果物: `src/components/session/SessionBreakView.tsx`
+  - 成果物: `src/components/session/CommonPoolSessionModal.tsx`
 
 ---
 
@@ -126,7 +126,7 @@
   - Again 選択時: 即座に次の問題へ（セッション内再出題なし）、`isOrange = true`, `consecutiveFailCount += 1`, `todayMistakeCardIds` に追加
   - 次回以降 Good 選択時: `isOrange = false`, `consecutiveFailCount = 0` にリセット
   - 成果物: `src/store/useAppStore.ts`
-- [ ] **Task 4-2: セッション完了リザルト & 「今日間違えた問題」一覧画面の作成 (Read)**
+- [x] **Task 4-2: セッション完了リザルト & 「今日間違えた問題」一覧画面の作成 (Read)**
   - 本日の午前4時以降にミスしたカードを一覧表示
   - `科目名 > 講義回名` のパンくず表示
   - 「連続ミス回数バッジ」（⚠️ 2連続ミス / 🔥 3連続ミス）

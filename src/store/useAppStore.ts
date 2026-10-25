@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import templateMainData from "../../templates/template-main-data.json";
 import { reviewCommonPoolCard } from "../services/fsrsService";
 import type {
   ActiveRating,
@@ -728,7 +729,7 @@ export const useAppStore = create<AppState>()(
           }
           return {
             selectedCourseId: courseId,
-            lastSelectedCourseId: courseId ?? state.lastSelectedCourseId,
+            lastSelectedCourseId: courseId,
             selectedLectureId: nextLectureId,
           };
         });
@@ -886,113 +887,7 @@ export const useAppStore = create<AppState>()(
       },
 
       loadSampleData: () => {
-        const now = new Date().toISOString();
-        const course1: Course = {
-          id: "course_circuits",
-          name: "電気回路I",
-          priorityMode: "NORMAL",
-          createdAt: now,
-          updatedAt: now,
-        };
-        const course2: Course = {
-          id: "course_linear_algebra",
-          name: "線形代数",
-          priorityMode: "NORMAL",
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        const lec1: Lecture = {
-          id: "lec_circuits_1",
-          courseId: course1.id,
-          name: "第1回 オームの法則とキルヒホッフの法則",
-          order: 1,
-          customPriorityMode: null,
-          createdAt: now,
-          updatedAt: now,
-        };
-        const lec2: Lecture = {
-          id: "lec_circuits_2",
-          courseId: course1.id,
-          name: "第2回 RL・RC過渡現象",
-          order: 2,
-          customPriorityMode: null,
-          createdAt: now,
-          updatedAt: now,
-        };
-        const lec3: Lecture = {
-          id: "lec_algebra_1",
-          courseId: course2.id,
-          name: "第1回 行列の基本変形と階数",
-          order: 1,
-          customPriorityMode: null,
-          createdAt: now,
-          updatedAt: now,
-        };
-
-        const card1 = createNewCard({
-          id: "card_c1_1",
-          courseId: course1.id,
-          lectureId: lec1.id,
-          front: "オームの法則の基本方程式は？",
-          back: "V = R · I (電圧 = 抵抗 × 電流)",
-        });
-
-        const card2 = createNewCard({
-          id: "card_c1_2",
-          courseId: course1.id,
-          lectureId: lec1.id,
-          front: "キルヒホッフの第1法則（電流則 KCL）の内容は？",
-          back: "回路の任意の接続点（節点）に流入する電流の総和は、流出する電流の総和に等しい（ΣI = 0）。",
-        });
-        // 未卒業（連続正解0・前回ミス）サンプル
-        card2.lecturePool = {
-          phase: "UNGRADUATED",
-          consecutiveCorrect: 0,
-          lastAttemptAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-        };
-
-        const card3 = createNewCard({
-          id: "card_c1_3",
-          courseId: course1.id,
-          lectureId: lec1.id,
-          front: "キルヒホッフの第2法則（電圧則 KVL）の内容は？",
-          back: "回路内の任意の閉路に沿って一周したとき、起電力の総和と電圧降下の総和は等しい（ΣV = 0）。",
-        });
-        // 未卒業（1回正解・8時間経過済み -> チェック区分3の対象）サンプル
-        card3.lecturePool = {
-          phase: "UNGRADUATED",
-          consecutiveCorrect: 1,
-          lastAttemptAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
-        };
-
-        const card4 = promoteCardToGraduate(
-          createNewCard({
-            id: "card_c1_4",
-            courseId: course1.id,
-            lectureId: lec1.id,
-            front: "抵抗 R の単位とその記号は？",
-            back: "オーム [Ω]",
-          }),
-          new Date(Date.now() - 24 * 3600 * 1000), // 1日前に卒業したサンプル
-        );
-
-        const card5 = createNewCard({
-          id: "card_c2_1",
-          courseId: course2.id,
-          lectureId: lec3.id,
-          front: "行列の行基本変形における3つの許容操作は？",
-          back: "1. 2つの行を入れ替える\n2. ある行を0でない定数倍する\n3. ある行の定数倍を別の行に加える",
-        });
-
-        set({
-          courses: [course1, course2],
-          lectures: [lec1, lec2, lec3],
-          cards: [card1, card2, card3, card4, card5],
-          selectedCourseId: course1.id,
-          lastSelectedCourseId: course1.id,
-          selectedLectureId: lec1.id,
-        });
+        get().importBackupJson(templateMainData as unknown as AppBackupData);
       },
     }),
     {

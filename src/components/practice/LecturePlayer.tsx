@@ -757,31 +757,9 @@ export function LecturePlayer({
                 }}
               >
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
-                      表面（問題）
-                    </span>
-                    {currentCard.checkCategory === "PRIORITY_3_COOLDOWN_CLEARED" && (
-                      <span className="rounded-full border border-emerald-600/60 bg-emerald-950/90 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
-                        ③ 定着確認 (連続正解・8h経過)
-                      </span>
-                    )}
-                    {currentCard.checkCategory === "PRIORITY_2_UNATTEMPTED" && (
-                      <span className="rounded-full border border-indigo-600/60 bg-indigo-950/90 px-2.5 py-0.5 text-[10px] font-bold text-indigo-300">
-                        ② 未実施 (新規挑戦)
-                      </span>
-                    )}
-                    {currentCard.checkCategory === "PRIORITY_1_ZERO_STREAK" && (
-                      <span className="rounded-full border border-amber-600/60 bg-amber-950/90 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">
-                        ① 弱点リベンジ (連続正解0)
-                      </span>
-                    )}
-                    {currentCard.badge && (
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] text-slate-300">
-                        {currentCard.badge}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+                    表面（問題）
+                  </span>
                   <span className="font-mono text-[11px] text-indigo-400">
                     Q.{currentIndex + 1}
                   </span>

@@ -15,14 +15,8 @@ import { SettingsModal } from "./components/settings/SettingsModal";
 import { useAppStore } from "./store/useAppStore";
 
 export default function App() {
-  const {
-    courses,
-    selectedCourseId,
-    lastSelectedCourseId,
-    selectCourse,
-    loadSampleData,
-    syncDailyCutoff,
-  } = useAppStore();
+  const { courses, selectedCourseId, lastSelectedCourseId, selectCourse, syncDailyCutoff } =
+    useAppStore();
 
   // 大カテゴリー: "HOME" | "MATERIALS"
   const [currentCategory, setCurrentCategory] = useState<NavCategory>("HOME");
@@ -34,10 +28,16 @@ export default function App() {
   const [isCommonSessionOpen, setIsCommonSessionOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // カテゴリー切り替え（教材タブへ移動・復帰する際、最後に開いていた科目を復元）
+  // カテゴリー切り替え（教材タブへ移動・復帰する際、最後に開いていた科目を復元。既に教材タブ選択中に再度選択時は教材一覧へ戻る）
   const handleSelectCategory = useCallback(
     (cat: NavCategory) => {
       if (cat === "MATERIALS") {
+        if (currentCategory === "MATERIALS") {
+          // 教材タブを選択した状態でさらに教材タブをもう一度選択したら、教材一覧の画面に戻る
+          selectCourse(null);
+          return;
+        }
+
         const targetCourseId =
           selectedCourseId && courses.some((c) => c.id === selectedCourseId)
             ? selectedCourseId
@@ -51,15 +51,8 @@ export default function App() {
       }
       setCurrentCategory(cat);
     },
-    [courses, selectedCourseId, lastSelectedCourseId, selectCourse],
+    [currentCategory, courses, selectedCourseId, lastSelectedCourseId, selectCourse],
   );
-
-  // 初回起動時、データが空の場合は自動でサンプルデータを投入
-  useEffect(() => {
-    if (courses.length === 0) {
-      loadSampleData();
-    }
-  }, [courses.length, loadSampleData]);
 
   // 午前04:00日付変更線のチェック（起動時 ＆ 1分周期）
   useEffect(() => {

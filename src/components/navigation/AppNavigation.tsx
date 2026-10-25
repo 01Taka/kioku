@@ -140,12 +140,8 @@ export function DesktopSidebar({
             <button
               type="button"
               onClick={() => {
-                if (currentCategory !== "MATERIALS") {
-                  onSelectCategory("MATERIALS");
-                  setIsMaterialsOpen(true);
-                } else {
-                  setIsMaterialsOpen(!isMaterialsOpen);
-                }
+                onSelectCategory("MATERIALS");
+                setIsMaterialsOpen(true);
               }}
               className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition ${
                 currentCategory === "MATERIALS"
@@ -157,7 +153,14 @@ export function DesktopSidebar({
                 <BookOpenIcon size={16} />
                 <span>教材</span>
               </div>
-              <div className="flex items-center space-x-1.5 text-slate-500">
+              <div
+                className="flex items-center space-x-1.5 text-slate-500 hover:text-slate-300"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMaterialsOpen(!isMaterialsOpen);
+                }}
+                title={isMaterialsOpen ? "科目を閉じる" : "科目を展開"}
+              >
                 <span className="font-mono text-[11px]">{courses.length}科目</span>
                 <ChevronDownIcon
                   size={14}

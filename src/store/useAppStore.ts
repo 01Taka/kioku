@@ -465,7 +465,7 @@ export const useAppStore = create<AppState>()(
 
         set((prev) => ({
           cards: prev.cards.map((card) => {
-            if (targetSet.has(card.id) && card.lecturePool.phase !== "GRADUATED") {
+            if (targetSet.has(card.id) && card.lecturePool.phase === "GRADUATION_RECOMMENDED") {
               graduatedCount++;
               return promoteCardToGraduate(card, now, requestRetention, dayCutoffHour);
             }

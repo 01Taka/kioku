@@ -1,7 +1,8 @@
 import type { Card as FSRSCard, RecordLogItem } from "ts-fsrs";
+import { z } from "zod";
 
 // =================================================================
-// 1. システム定数 & 基本Enum
+// 1. システム定数 & 基本Enum / Zodスキーマ
 // =================================================================
 
 export const SYSTEM_CONSTANTS = {
@@ -13,11 +14,13 @@ export const SYSTEM_CONSTANTS = {
 } as const;
 
 /** 講義専用プール（個別プール）内でのカードステータス */
-export type LectureCardPhase =
-  | "UNATTEMPTED" // 未実施: 過去に一回も取り組んでいない
-  | "UNGRADUATED" // 未卒業: 取り組んだことがあるがまだ卒業していない
-  | "GRADUATION_RECOMMENDED" // 卒業推奨: 現在2回以上連続で正解している
-  | "GRADUATED"; // 卒業済: 共通プールに移動済み
+export const LectureCardPhaseSchema = z.enum([
+  "UNATTEMPTED", // 未実施: 過去に一回も取り組んでいない
+  "UNGRADUATED", // 未卒業: 取り組んだことがあるがまだ卒業していない
+  "GRADUATION_RECOMMENDED", // 卒業推奨: 現在2回以上連続で正解している
+  "GRADUATED", // 卒業済: 共通プールに移動済み
+]);
+export type LectureCardPhase = z.infer<typeof LectureCardPhaseSchema>;
 
 /**
  * 講義「チェック」モードにおける3つの出題区分（優先度: 3 > 2 > 1）
@@ -25,61 +28,69 @@ export type LectureCardPhase =
  * 2: 未実施（過去に一回も取り組んでいない）
  * 1: 連続正解0の未暗記（未卒業）
  */
-export type LectureCheckCategory =
-  "PRIORITY_3_COOLDOWN_CLEARED" | "PRIORITY_2_UNATTEMPTED" | "PRIORITY_1_ZERO_STREAK";
+export const LectureCheckCategorySchema = z.enum([
+  "PRIORITY_3_COOLDOWN_CLEARED",
+  "PRIORITY_2_UNATTEMPTED",
+  "PRIORITY_1_ZERO_STREAK",
+]);
+export type LectureCheckCategory = z.infer<typeof LectureCheckCategorySchema>;
 
 /** カテゴリー優先度モード（3段階 & 階層継承） */
-export type PriorityMode =
-  | "FORCE" // 強制出題（due無視、配下のACTIVE全問を1日1回出題）
-  | "PRIORITY" // 優先（期日到来カードのみ最優先出題）
-  | "NORMAL"; // 通常（期日到来カードのみ、通常順序）
+export const PriorityModeSchema = z.enum([
+  "FORCE", // 強制出題（due無視、配下のACTIVE全問を1日1回出題）
+  "PRIORITY", // 優先（期日到来カードのみ最優先出題）
+  "NORMAL", // 通常（期日到来カードのみ、通常順序）
+]);
+export type PriorityMode = z.infer<typeof PriorityModeSchema>;
 
 /**
  * 共通プールにおけるカードの復習性質・出題枠区分（セマンティック命名）
  */
-export type ReviewCategory =
-  | "RETRY" // 🔁 リベンジ枠（直近Again / 未克服 / 最優先出題）
-  | "DUE" // 🎯 期日枠（今日が最適期日 または 期限切れの通常カード）
-  | "EARLY"; // ⚡ 先取り枠（未来期日カードの前倒し復習）
+export const ReviewCategorySchema = z.enum([
+  "RETRY", // 🔁 リベンジ枠（直近Again / 未克服 / 最優先出題）
+  "DUE", // 🎯 期日枠（今日が最適期日 または 期限切れの通常カード）
+  "EARLY", // ⚡ 先取り枠（未来期日カードの前倒し復習）
+]);
+export type ReviewCategory = z.infer<typeof ReviewCategorySchema>;
 
 /** 共通プールの回答ボタン（2ボタン固定） */
-export type ActiveRating = "AGAIN" | "GOOD";
+export const ActiveRatingSchema = z.enum(["AGAIN", "GOOD"]);
+export type ActiveRating = z.infer<typeof ActiveRatingSchema>;
 
 /** AI生成フラッシュカードの入力フォーマット */
-export interface FlashcardContent {
-  question: string;
-  answer: string;
-}
+export const FlashcardContentSchema = z.object({
+  question: z.string().trim().min(1, "問題文を入力してください"),
+  answer: z.string().trim().min(1, "解答文を入力してください"),
+});
+export type FlashcardContent = z.infer<typeof FlashcardContentSchema>;
 
 // =================================================================
 // 2. 2階層カテゴリ構造（Course ＞ Lecture）
 // =================================================================
 
 /** 第1階層: 科目（親） */
-export interface Course {
-  id: string;
-  name: string; // 例: "電気回路I", "線形代数"
-  priorityMode: PriorityMode; // 科目全体の優先度（デフォルト: 'NORMAL'）
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
+export const CourseSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1, "科目名を入力してください"), // 例: "電気回路I", "線形代数"
+  priorityMode: PriorityModeSchema, // 科目全体の優先度（デフォルト: 'NORMAL'）
+  createdAt: z.string(), // ISO 8601
+  updatedAt: z.string(), // ISO 8601
   // ※ isSuspended は SSoT 原則に基づき Card 側でのみ保持
-}
+});
+export type Course = z.infer<typeof CourseSchema>;
 
 /** 第2階層: 講義回（子） */
-export interface Lecture {
-  id: string;
-  courseId: string; // 親CourseのID
-  name: string; // 例: "第1回 オームの法則"
-  order: number; // シラバス順の並び番号
-
+export const LectureSchema = z.object({
+  id: z.string(),
+  courseId: z.string(), // 親CourseのID
+  name: z.string().trim().min(1, "講義名を入力してください"), // 例: "第1回 オームの法則"
+  order: z.number(), // シラバス順の並び番号
   // 個別上書き用優先度。nullの場合は親Courseの priorityMode を継承
-  customPriorityMode: PriorityMode | null;
-
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
-  // ※ 待機時間は AppSettings.waitingDurationHours で一元管理するため削除
-  // ※ isSuspended は SSoT 原則に基づき Card 側でのみ保持
-}
+  customPriorityMode: PriorityModeSchema.nullable(),
+  createdAt: z.string(), // ISO 8601
+  updatedAt: z.string(), // ISO 8601
+});
+export type Lecture = z.infer<typeof LectureSchema>;
 
 // =================================================================
 // 3. 各プールのステート型 & カードモデル（Card）
@@ -89,90 +100,96 @@ export interface Lecture {
  * 講義専用プール（個別プール）ステート
  * 講義ビューのカード一覧やプログレスバー表示に直接使用される
  */
-export interface CardLecturePoolState {
-  phase: LectureCardPhase;
-  consecutiveCorrect: number; // 連続正解数（0, 1, 2...）
-  lastAttemptAt: string | null; // 最後に取り組んだ日時（ISO 8601）
-}
+export const CardLecturePoolStateSchema = z.object({
+  phase: LectureCardPhaseSchema,
+  consecutiveCorrect: z.number().int().min(0), // 連続正解数（0, 1, 2...）
+  lastAttemptAt: z.string().nullable(), // 最後に取り組んだ日時（ISO 8601）
+});
+export type CardLecturePoolState = z.infer<typeof CardLecturePoolStateSchema>;
+
+/** FSRS Card スキーマ */
+export const FSRSCardSchema = z
+  .object({
+    due: z.union([z.string(), z.date()]),
+    stability: z.number(),
+    difficulty: z.number(),
+    elapsed_days: z.number(),
+    scheduled_days: z.number(),
+    reps: z.number(),
+    lapses: z.number(),
+    state: z.number(),
+    last_review: z.union([z.string(), z.date()]).optional(),
+  })
+  .passthrough();
 
 /**
  * 共通プール（全体FSRS）ステート
  * 卒業して共通プールへ出陣したカードのみ保持（未暗記・待機中は null）
  */
+export const CardCommonPoolStateSchema = z.object({
+  fsrs: FSRSCardSchema as unknown as z.ZodType<FSRSCard>, // ts-fsrs の Card
+  lastReviewedAt: z.string().nullable(), // 午前4時境界の当日重複防止用（ISO 8601）
+  consecutiveFailCount: z.number().int().min(0), // 共通プールでの連続ミス回数（2以上で降格推奨）
+});
 export interface CardCommonPoolState {
-  fsrs: FSRSCard; // ts-fsrs の Card
-  lastReviewedAt: string | null; // 午前4時境界の当日重複防止用（ISO 8601）
-  consecutiveFailCount: number; // 共通プールでの連続ミス回数（2以上で降格推奨）
+  fsrs: FSRSCard;
+  lastReviewedAt: string | null;
+  consecutiveFailCount: number;
 }
 
 /**
  * 統合 Card モデル（2重構造）
  */
-export interface Card {
+export const CardSchema = z.object({
   // --- 基本メタデータ（ステージ不変） ---
-  id: string;
-  courseId: string; // ★ 親科目ID（Webストレージでの高速アクセス・集計用）
-  lectureId: string; // 所属講義回ID（永続固定・物理移動なし）
-  front: string; // 問題面
-  back: string; // 解答面
-
-  // ★ 出題除外フラグ（未暗記・ACTIVE問わず全停止 / SSoT）
-  isSuspended: boolean;
-
-  // ★ 一括追加時のグループ識別ID（取り消し・管理用）
-  bundleId?: string;
-
-  // --- 各プール専用ステート ---
-  // ★ 講義専用（個別）プール用データ（常に存在し、ACTIVE時も状態を保持）
-  lecturePool: CardLecturePoolState;
-
-  // ★ 共通プール用データ（ACTIVE時のみ存在、未暗記・待機中は null）
-  commonPool: CardCommonPoolState | null;
-
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
-}
+  id: z.string(),
+  courseId: z.string(), // 親科目ID（Webストレージでの高速アクセス・集計用）
+  lectureId: z.string(), // 所属講義回ID（永続固定・物理移動なし）
+  front: z.string().trim().min(1, "問題文を入力してください"), // 問題面
+  back: z.string().trim().min(1, "解答文を入力してください"), // 解答面
+  isSuspended: z.boolean(), // 出題除外フラグ（未暗記・ACTIVE問わず全停止 / SSoT）
+  bundleId: z.string().optional(), // 一括追加時のグループ識別ID（取り消し・管理用）
+  lecturePool: CardLecturePoolStateSchema, // 講義専用（個別）プール用データ
+  commonPool: CardCommonPoolStateSchema.nullable(), // 共通プール用データ
+  createdAt: z.string(), // ISO 8601
+  updatedAt: z.string(), // ISO 8601
+});
+export type Card = z.infer<typeof CardSchema>;
 
 // =================================================================
 // 4. アプリケーション設定 & セッション状態
 // =================================================================
 
-export interface AppSettings {
-  requestRetention: number; // デフォルト: 0.82
-  enableEarlyReview: boolean; // 先取り枠（EARLY）の出題ON/OFF
-  sortOrder: "DUE_ASC" | "SHUFFLE"; // 出題順（due昇順 または カテゴリ内シャッフル）
-  dayCutoffHour: number; // デフォルト: 4 (午前4:00)
-
-  // ★ 講義専用プールの待機ロック時間（アプリ共通で管理 / 時間単位）
-  waitingDurationHours: number; // デフォルト: 8
-}
+export const AppSettingsSchema = z.object({
+  requestRetention: z.number().min(0.5).max(0.99), // デフォルト: 0.82
+  enableEarlyReview: z.boolean(), // 先取り枠（EARLY）の出題ON/OFF
+  sortOrder: z.enum(["DUE_ASC", "SHUFFLE"]), // 出題順
+  dayCutoffHour: z.number().int().min(0).max(23), // デフォルト: 4 (午前4:00)
+  waitingDurationHours: z.number().min(0), // デフォルト: 8
+});
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 /**
  * LocalStorage / IndexedDB に保持する日次・セッション状態
- * 単なる string[] のため、保存・読み出し・リセットが極めて軽量
  */
-export interface SessionStorageState {
-  // 🔁 現在リベンジ枠（最優先キュー）にある Card ID 一覧
-  retryCardIds: string[];
+export const SessionStorageStateSchema = z.object({
+  retryCardIds: z.array(z.string()),
+  todayMistakeCardIds: z.array(z.string()),
+  lastActiveDateKey: z.string(),
+});
+export type SessionStorageState = z.infer<typeof SessionStorageStateSchema>;
 
-  // 📝 本日の午前4時以降にミスした Card ID 一覧（「今日間違えた問題」画面の表示用）
-  todayMistakeCardIds: string[];
-
-  // 最後に日付変更線（午前4:00）をまたいだ日付キー（例: "2026-10-12"）
-  // 午前4時を跨いだ際の todayMistakeCardIds 自動クリア判定に使用
-  lastActiveDateKey: string;
-}
-
-export interface ReviewLog {
-  id: string;
-  cardId: string;
-  courseId: string;
-  lectureId: string;
-  stage: "LECTURE_POOL" | "COMMON_POOL" | "FREE_PRACTICE";
-  rating: ActiveRating;
-  fsrsLogItem?: RecordLogItem; // ts-fsrs の更新ログ
-  reviewedAt: string; // ISO 8601
-}
+export const ReviewLogSchema = z.object({
+  id: z.string(),
+  cardId: z.string(),
+  courseId: z.string(),
+  lectureId: z.string(),
+  stage: z.enum(["LECTURE_POOL", "COMMON_POOL", "FREE_PRACTICE"]),
+  rating: ActiveRatingSchema,
+  fsrsLogItem: z.custom<RecordLogItem>().optional(),
+  reviewedAt: z.string(),
+});
+export type ReviewLog = z.infer<typeof ReviewLogSchema>;
 
 // =================================================================
 // 5. フラットなエクスポート / インポート用スキーマ（配布・マージ対応）
@@ -180,42 +197,53 @@ export interface ReviewLog {
 
 /**
  * 1枚のカードの中に親情報も内包した完全自己完結型レコード
- * IDの衝突を避けるため親側のキーを prefix 付与
  */
-export interface ExportCardRecord {
-  // --- 親: 科目情報 ---
-  courseId: string;
-  courseName: string;
-  coursePriorityMode?: PriorityMode;
-
-  // --- 親: 講義回情報 ---
-  lectureId: string;
-  lectureName: string;
-  lectureOrder?: number;
-
-  // --- カード本体 ---
-  id: string; // カードID
-  front: string;
-  back: string;
-  isSuspended: boolean;
-  bundleId?: string;
-
-  // 各プールステート
-  lecturePool: CardLecturePoolState;
-  commonPool?: CardCommonPoolState | null;
-
-  createdAt?: string; // ISO 8601
-  updatedAt?: string; // ISO 8601
-}
+export const ExportCardRecordSchema = z.object({
+  courseId: z.string(),
+  courseName: z.string(),
+  coursePriorityMode: PriorityModeSchema.optional(),
+  lectureId: z.string(),
+  lectureName: z.string(),
+  lectureOrder: z.number().optional(),
+  id: z.string(),
+  front: z.string(),
+  back: z.string(),
+  isSuspended: z.boolean().default(false),
+  bundleId: z.string().optional(),
+  lecturePool: z.unknown(), // normalizeLecturePoolState で安全に変換
+  commonPool: CardCommonPoolStateSchema.nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+export type ExportCardRecord = z.infer<typeof ExportCardRecordSchema>;
 
 /**
  * バックアップ・教材共有用 JSON ルート
  */
-export interface AppBackupData {
-  version: 1; // スキーマバージョン
-  exportedAt: string; // ISO 8601
-  settings?: AppSettings; // 全体バックアップ時のみ含める
-  cards: ExportCardRecord[]; // ★ これ1本で全階層が復元・マージ可能
+export const AppBackupDataSchema = z.object({
+  version: z.literal(1),
+  exportedAt: z.string(),
+  settings: AppSettingsSchema.optional(),
+  cards: z.array(ExportCardRecordSchema),
+});
+export type AppBackupData = z.infer<typeof AppBackupDataSchema>;
+
+/**
+ * バックアップJSONのパース & バリデーションヘルパー
+ */
+export function parseBackupData(raw: unknown): {
+  success: boolean;
+  data?: AppBackupData;
+  error?: string;
+} {
+  const result = AppBackupDataSchema.safeParse(raw);
+  if (!result.success) {
+    const errorDetails = result.error.issues
+      .map((i) => `${i.path.join(".") || "root"}: ${i.message}`)
+      .join("; ");
+    return { success: false, error: errorDetails };
+  }
+  return { success: true, data: result.data };
 }
 
 // =================================================================
@@ -470,13 +498,28 @@ export function resetCardToUnattempted(card: Card): Card {
 }
 
 /**
+ * 旧スキーマ（UNMEMORIZED / WAITING / ACTIVE, lastCorrectAt）対応用の入力スキーマ
+ */
+const RawLecturePoolStateSchema = z
+  .object({
+    phase: z.unknown().optional(),
+    consecutiveCorrect: z.unknown().optional(),
+    lastAttemptAt: z.unknown().optional(),
+    lastCorrectAt: z.unknown().optional(),
+  })
+  .passthrough();
+
+/**
  * 旧スキーマ（UNMEMORIZED / WAITING / ACTIVE, lastCorrectAt）からの後方互換マイグレーション
  */
 export function normalizeLecturePoolState(raw: unknown): CardLecturePoolState {
-  const obj = (raw ?? {}) as Record<string, unknown>;
+  const parseResult = RawLecturePoolStateSchema.safeParse(raw ?? {});
+  const obj = parseResult.success ? parseResult.data : {};
   const rawPhase = String(obj.phase ?? "UNATTEMPTED");
   const consecutiveCorrect =
-    typeof obj.consecutiveCorrect === "number" ? obj.consecutiveCorrect : 0;
+    typeof obj.consecutiveCorrect === "number" && !Number.isNaN(obj.consecutiveCorrect)
+      ? Math.max(0, Math.floor(obj.consecutiveCorrect))
+      : 0;
   const lastAttemptAt =
     typeof obj.lastAttemptAt === "string"
       ? obj.lastAttemptAt
@@ -529,7 +572,14 @@ export function importBackupData(
   const lectureMap = new Map(currentLectures.map((l) => [l.id, l]));
   const cardMap = new Map(currentCards.map((c) => [c.id, c]));
 
-  for (const record of importedCards) {
+  for (const rawRecord of importedCards) {
+    const parsedRecord = ExportCardRecordSchema.safeParse(rawRecord);
+    if (!parsedRecord.success) {
+      // スキーマを満たさない不正なカードレコードは安全にスキップ
+      continue;
+    }
+    const record = parsedRecord.data;
+
     // 1. 科目（Course）: なければ作成、あれば名前は既存を維持
     if (!courseMap.has(record.courseId)) {
       courseMap.set(record.courseId, {

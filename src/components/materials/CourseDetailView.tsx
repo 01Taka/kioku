@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
+import { LectureSchema } from "../../types/schema";
 import { ArrowLeftIcon, EditIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
 import { LecturePlayer, type PracticeCardItem } from "../practice/LecturePlayer";
 import { LectureEditView } from "./LectureEditView";
@@ -259,8 +260,10 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
   // 新規講義作成
   const handleCreateLecture = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLectureName.trim() || !courseId) return;
-    const created = addLecture(courseId, newLectureName.trim());
+    if (!courseId) return;
+    const result = LectureSchema.shape.name.safeParse(newLectureName);
+    if (!result.success) return;
+    const created = addLecture(courseId, result.data);
     setNewLectureName("");
     setIsAddingLecture(false);
     setSelectedCheckLectureId(created.id);

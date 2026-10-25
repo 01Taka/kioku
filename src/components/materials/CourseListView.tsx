@@ -3,7 +3,7 @@ import { useState } from "react";
 import templateMainData from "../../../templates/template-main-data.json";
 import { useAppStore } from "../../store/useAppStore";
 import type { AppBackupData } from "../../types/schema";
-import { isWaitingCardLocked } from "../../types/schema";
+import { CourseSchema, isWaitingCardLocked } from "../../types/schema";
 import { BookOpenIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface CourseListViewProps {
@@ -19,8 +19,9 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
 
   const handleCreateCourse = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCourseName.trim()) return;
-    const created = addCourse(newCourseName.trim());
+    const result = CourseSchema.shape.name.safeParse(newCourseName);
+    if (!result.success) return;
+    const created = addCourse(result.data);
     setNewCourseName("");
     setIsAddingCourse(false);
     onSelectCourse(created.id);

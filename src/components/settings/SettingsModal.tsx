@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 
 import { DEFAULT_APP_SETTINGS, useAppStore } from "../../store/useAppStore";
-import type { AppBackupData } from "../../types/schema";
+import { parseBackupData } from "../../types/schema";
 import { CheckIcon, SlidersIcon, XIcon } from "../icons";
 
 export interface SettingsModalProps {
@@ -50,21 +50,27 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as AppBackupData;
-
-      if (!parsed || !Array.isArray(parsed.cards)) {
-        throw new Error("有効なバックアップ形式（cards 配列）が見つかりません。");
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new Error("JSON形式として正しく読み取れませんでした。");
       }
 
-      const result = importBackupJson(parsed);
+      const validated = parseBackupData(parsed);
+      if (!validated.success || !validated.data) {
+        throw new Error(`バックアップ形式が不正です: ${validated.error}`);
+      }
+
+      const result = importBackupJson(validated.data);
       setBackupNotice({
         type: "success",
-        message: `✅ マージインポート完了！ 科目 +${result.addedCourses}件 / 講義 +${result.addedLectures}件 / 新規カード +${result.addedCards}枚（全 ${parsed.cards.length} レコード同期）`,
+        message: `✅ マージインポート完了！ 科目 +${result.addedCourses}件 / 講義 +${result.addedLectures}件 / 新規カード +${result.addedCards}枚（全 ${validated.data.cards.length} レコード同期）`,
       });
     } catch (err) {
       setBackupNotice({
         type: "error",
-        message: `⚠️ インポート失敗: ${err instanceof Error ? err.message : "JSONの解析に失敗しました"}`,
+        message: `⚠️ インポート失敗: ${err instanceof Error ? err.message : "インポートに失敗しました"}`,
       });
     } finally {
       if (fileInputRef.current) {

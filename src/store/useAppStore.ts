@@ -19,12 +19,15 @@ import type {
   SessionStorageState,
 } from "../types/schema";
 import {
+  AppSettingsSchema,
   createNewCard,
   demoteCardToLecturePool,
+  FlashcardContentSchema,
   getSuspensionStatus,
   importBackupData,
   isWaitingCardLocked,
   normalizeLecturePoolState,
+  parseBackupData,
   resetCardToUnattempted,
   SYSTEM_CONSTANTS,
 } from "../types/schema";
@@ -123,7 +126,7 @@ interface AppState {
 
   // Backup Export & Import actions
   exportBackupData: () => AppBackupData;
-  importBackupJson: (backup: AppBackupData) => {
+  importBackupJson: (backup: unknown) => {
     addedCourses: number;
     addedLectures: number;
     addedCards: number;
@@ -174,10 +177,15 @@ export const useAppStore = create<AppState>()(
       lastImportBatch: null,
 
       updateSettings: (updates) => {
+        const validated = AppSettingsSchema.partial().safeParse(updates);
+        if (!validated.success) {
+          console.warn("無効な設定更新パラメータです:", validated.error);
+          return;
+        }
         set((state) => ({
           settings: {
             ...state.settings,
-            ...updates,
+            ...validated.data,
           },
         }));
       },
@@ -637,7 +645,12 @@ export const useAppStore = create<AppState>()(
         };
       },
 
-      importBackupJson: (backup) => {
+      importBackupJson: (input: unknown) => {
+        const parsed = parseBackupData(input);
+        if (!parsed.success || !parsed.data) {
+          throw new Error(`無効なバックアップデータです: ${parsed.error ?? "フォーマット不正"}`);
+        }
+        const backup = parsed.data;
         const state = get();
         const prevCourseCount = state.courses.length;
         const prevLectureCount = state.lectures.length;
@@ -667,20 +680,33 @@ export const useAppStore = create<AppState>()(
       },
 
       addCardsBatch: (courseId, lectureId, contents, customBundleId) => {
+        // Zod スキーマでカード内容を厳格バリデーション
+        const parsedContents = contents
+          .map((c) => FlashcardContentSchema.safeParse(c))
+          .filter((res) => res.success)
+          .map((res) => res.data);
+
+        if (parsedContents.length === 0) {
+          return {
+            bundleId: "",
+            addedCards: [],
+          };
+        }
+
         const bundleId =
           customBundleId || `bundle_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        const newCards: Card[] = contents.map((c) =>
+        const newCards: Card[] = parsedContents.map((c) =>
           createNewCard({
             id: `card_${generateId()}`,
             courseId,
             lectureId,
-            front: c.question.trim(),
-            back: c.answer.trim(),
+            front: c.question,
+            back: c.answer,
             bundleId,
           }),
         );
 
-        const signature = getBatchSignature(contents);
+        const signature = getBatchSignature(parsedContents);
 
         set((state) => ({
           cards: [...newCards, ...state.cards],
@@ -688,7 +714,7 @@ export const useAppStore = create<AppState>()(
             lectureId,
             signature,
             bundleId,
-            count: contents.length,
+            count: parsedContents.length,
           },
         }));
 

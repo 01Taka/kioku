@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
-import type { Card } from "../../types/schema";
+import { type Card, FlashcardContentSchema } from "../../types/schema";
 import { AiBatchImportModal } from "../AiBatchImportModal";
 import {
   ArrowLeftIcon,
@@ -50,8 +50,12 @@ export function LectureEditView({
 
   const handleAddSingleCard = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!singleFront.trim() || !singleBack.trim()) return;
-    addCard(courseId, lectureId, singleFront.trim(), singleBack.trim());
+    const result = FlashcardContentSchema.safeParse({
+      question: singleFront,
+      answer: singleBack,
+    });
+    if (!result.success) return;
+    addCard(courseId, lectureId, result.data.question, result.data.answer);
     setSingleFront("");
     setSingleBack("");
     setIsAddingSingle(false);

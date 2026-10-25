@@ -1,4 +1,6 @@
-import type { FlashcardContent } from "../types/schema";
+import { z } from "zod";
+
+import { type FlashcardContent, FlashcardContentSchema } from "../types/schema";
 
 export interface ParseResult {
   success: boolean;
@@ -7,9 +9,11 @@ export interface ParseResult {
   source: "JSON" | "FALLBACK_SCANNER" | "NONE";
 }
 
+const FlashcardListSchema = z.array(FlashcardContentSchema);
+
 /**
  * AIが出力した文字列からフラッシュカード（question / answer のペア）を抽出する
- * 1. まず標準JSON.parseを試行（コードブロック除去後）
+ * 1. まず標準JSON.parseを試行し、Zodスキーマで厳格にバリデーション
  * 2. 失敗した場合は、ハルシネーション（{}の不整合等）に耐性のあるキートークンスキャナーを実行
  *    ※「questionとanswerが交互に配置されていること」を厳格に検証
  */
@@ -29,38 +33,16 @@ export function parseFlashcardsFromAI(rawInput: string): ParseResult {
   const matchCodeBlock = trimmed.match(codeBlockRegex);
   const jsonCandidate = matchCodeBlock ? matchCodeBlock[1].trim() : trimmed;
 
-  // --- アプローチ 1: 標準 JSON.parse ---
+  // --- アプローチ 1: 標準 JSON.parse + Zod バリデーション ---
   try {
     const parsed = JSON.parse(jsonCandidate);
-    if (Array.isArray(parsed)) {
-      const validCards: FlashcardContent[] = [];
-      let isStrictlyValid = true;
-
-      for (let i = 0; i < parsed.length; i++) {
-        const item = parsed[i];
-        if (
-          item &&
-          typeof item === "object" &&
-          typeof item.question === "string" &&
-          typeof item.answer === "string"
-        ) {
-          validCards.push({
-            question: item.question.trim(),
-            answer: item.answer.trim(),
-          });
-        } else {
-          isStrictlyValid = false;
-          break;
-        }
-      }
-
-      if (isStrictlyValid && validCards.length > 0) {
-        return {
-          success: true,
-          cards: validCards,
-          source: "JSON",
-        };
-      }
+    const zodResult = FlashcardListSchema.safeParse(parsed);
+    if (zodResult.success && zodResult.data.length > 0) {
+      return {
+        success: true,
+        cards: zodResult.data,
+        source: "JSON",
+      };
     }
   } catch {
     // JSON.parseが失敗した場合はフォールバックへ進む
@@ -161,9 +143,20 @@ function scanAlternatingKeyValuePairs(text: string): ParseResult {
     };
   }
 
+  // Zod で各カードの最小文字数や整形を最終チェック
+  const validated = FlashcardListSchema.safeParse(cards);
+  if (!validated.success || validated.data.length === 0) {
+    return {
+      success: false,
+      cards: [],
+      errorMessage: "抽出されたカードの問題または解答が空です。",
+      source: "FALLBACK_SCANNER",
+    };
+  }
+
   return {
     success: true,
-    cards,
+    cards: validated.data,
     source: "FALLBACK_SCANNER",
   };
 }

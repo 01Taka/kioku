@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 
+import { FlashcardContentSchema } from "../../types/schema";
 import { EditIcon, XIcon } from "../icons";
 
 interface CardEditModalProps {
@@ -12,11 +13,17 @@ interface CardEditModalProps {
 export function CardEditModal({ initialFront, initialBack, onSave, onClose }: CardEditModalProps) {
   const [front, setFront] = useState(initialFront);
   const [back, setBack] = useState(initialBack);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!front.trim() || !back.trim()) return;
-    onSave(front.trim(), back.trim());
+    const result = FlashcardContentSchema.safeParse({ question: front, answer: back });
+    if (!result.success) {
+      setValidationError(result.error.issues[0]?.message ?? "入力内容が不正です。");
+      return;
+    }
+    setValidationError(null);
+    onSave(result.data.question, result.data.answer);
   };
 
   return (
@@ -33,6 +40,12 @@ export function CardEditModal({ initialFront, initialBack, onSave, onClose }: Ca
           </button>
         </div>
 
+        {validationError && (
+          <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2.5 text-xs text-rose-400">
+            ⚠️ {validationError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* 上に問題の入力フォーム */}
           <div>
@@ -40,7 +53,10 @@ export function CardEditModal({ initialFront, initialBack, onSave, onClose }: Ca
             <textarea
               rows={4}
               value={front}
-              onChange={(e) => setFront(e.target.value)}
+              onChange={(e) => {
+                setFront(e.target.value);
+                if (validationError) setValidationError(null);
+              }}
               placeholder="問題を入力してください"
               className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
               autoFocus
@@ -53,7 +69,10 @@ export function CardEditModal({ initialFront, initialBack, onSave, onClose }: Ca
             <textarea
               rows={4}
               value={back}
-              onChange={(e) => setBack(e.target.value)}
+              onChange={(e) => {
+                setBack(e.target.value);
+                if (validationError) setValidationError(null);
+              }}
               placeholder="解答・解説を入力してください"
               className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
             />

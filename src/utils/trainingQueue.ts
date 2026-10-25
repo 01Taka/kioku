@@ -188,3 +188,23 @@ export function applyLectureTrainingAnswer(
     becameGraduationRecommended: nextPhase === "GRADUATION_RECOMMENDED",
   };
 }
+
+/**
+ * 講義チェック後の「間違えた問題の復習」で正解した際の状態遷移
+ * - 初回チェックで間違えた（consecutiveCorrect: 0）カードが復習で正解した場合、
+ *   consecutiveCorrect を 1 に設定（0から1に増加）し、phase は UNGRADUATED とする。
+ * - 卒業推奨（consecutiveCorrect >= 2）には昇格させない。
+ */
+export function applyLectureReviewAnswer(card: Card, now: Date = new Date()): Card {
+  const nowIso = now.toISOString();
+  return {
+    ...card,
+    lecturePool: {
+      phase: "UNGRADUATED",
+      consecutiveCorrect: 1,
+      lastAttemptAt: nowIso,
+    },
+    commonPool: null,
+    updatedAt: nowIso,
+  };
+}

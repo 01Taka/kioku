@@ -23,6 +23,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     deleteLecture,
     getLectureTrainingQueue,
     answerLectureTrainingCard,
+    answerLectureReviewCard,
     graduateRecommendedCardsInLecture,
     batchGraduateCards,
   } = useAppStore();
@@ -659,6 +660,11 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
           onAnswer={(cardId, result) => {
             if (practiceSession.mode === "TRAINING") {
               answerLectureTrainingCard(cardId, result);
+            }
+          }}
+          onReviewAnswer={(cardId) => {
+            if (practiceSession.mode === "TRAINING") {
+              answerLectureReviewCard(cardId);
             }
           }}
           recommendedCount={practiceSession.recommendedCount}

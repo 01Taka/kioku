@@ -28,8 +28,10 @@ export interface LecturePlayerProps {
   onGraduateRecommended?: () => number;
   /** 選択されたカードID一覧を共通プールへ一括移動するコールバック */
   onGraduateSelected?: (cardIds: string[]) => number;
-  /** 回答発生時の通知コールバック */
+  /** 初回回答発生時の通知コールバック */
   onAnswer?: (cardId: string, result: "correct" | "incorrect") => void;
+  /** 復習で正解した際の通知コールバック（consecutiveCorrect=1への更新） */
+  onReviewAnswer?: (cardId: string) => void;
   /** 全問終了時の通知コールバック */
   onFinish?: (results: Record<string, "correct" | "incorrect">) => void;
   /** 結果画面のメインアクションボタン（「次の10問」「2周目開始」「別講義チェック開始」「完了」など） */
@@ -54,20 +56,27 @@ export function LecturePlayer({
   onGraduateRecommended: _onGraduateRecommended,
   onGraduateSelected,
   onAnswer,
+  onReviewAnswer,
   onFinish,
   mainAction,
   onClose,
 }: LecturePlayerProps) {
-  const { cards: storeCards } = useAppStore();
-
-  // セッション全体の全カードリスト
+  // セッション全体の全カードリスト（リザルト画面を閉じるまで不変）
   const [sessionCards, setSessionCards] = useState<PracticeCardItem[]>(cards);
   // 現在解いているカードリスト（初回はsessionCards、復習時は間違い問題のみ）
   const [activeCards, setActiveCards] = useState<PracticeCardItem[]>(cards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  // セッション全体における各カードの最新回答状態（復習で正解した場合は正解に更新される）
-  const [answers, setAnswers] = useState<Record<string, "correct" | "incorrect">>({});
+
+  // 初回チェック演習での各カードの回答
+  const [initialAnswers, setInitialAnswers] = useState<Record<string, "correct" | "incorrect">>({});
+  // 復習演習での各カードの最新回答
+  const [reviewAnswers, setReviewAnswers] = useState<Record<string, "correct" | "incorrect">>({});
+  // 復習モード中かどうかのフラグ
+  const [isReviewMode, setIsReviewMode] = useState(false);
+  // 初回チェック終了時点で特定された卒業推奨カードIDのセット（不変）
+  const [graduatedCandidateIds, setGraduatedCandidateIds] = useState<Set<string>>(new Set());
+
   const [isCompleted, setIsCompleted] = useState(false);
   const [isShowingMistakesReview, setIsShowingMistakesReview] = useState(false);
   const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
@@ -82,7 +91,11 @@ export function LecturePlayer({
     setActiveCards(cards);
     setCurrentIndex(0);
     setIsFlipped(false);
-    setAnswers({});
+    setInitialAnswers({});
+    setReviewAnswers({});
+    setIsReviewMode(false);
+    setGraduatedCandidateIds(new Set());
+    setSelectedGraduationIds(new Set());
     setIsCompleted(false);
     setIsShowingMistakesReview(false);
   }, [cards]);
@@ -103,9 +116,6 @@ export function LecturePlayer({
     setActiveCards(shuffled);
     setCurrentIndex(0);
     setIsFlipped(false);
-    setAnswers({});
-    setIsCompleted(false);
-    setIsShowingMistakesReview(false);
     setSlideState("idle");
   }, [activeCards]);
 
@@ -129,23 +139,66 @@ export function LecturePlayer({
     (cardId: string, result: "correct" | "incorrect") => {
       if (slideState !== "idle") return;
 
-      // 回答情報の伝達
-      onAnswer?.(cardId, result);
+      if (!isReviewMode) {
+        // --- 1. 初回チェック演習中 ---
+        onAnswer?.(cardId, result);
+        const nextInitial = { ...initialAnswers, [cardId]: result };
+        setInitialAnswers(nextInitial);
 
-      const nextAnswers = { ...answers, [cardId]: result };
-      setAnswers(nextAnswers);
+        if (currentIndex + 1 >= totalCards) {
+          onFinish?.(nextInitial);
 
-      if (currentIndex + 1 >= totalCards) {
-        onFinish?.(nextAnswers);
+          // 初回チェック終了時点での卒業推奨カードを確定
+          const latestCards = useAppStore.getState().cards;
+          const candidateSet = new Set<string>();
 
-        // まだ間違えたままの問題がある場合は「間違えた問題の復習確認画面」を経由
-        const hasMistakes = Object.values(nextAnswers).some((res) => res === "incorrect");
-        if (hasMistakes) {
-          setIsShowingMistakesReview(true);
-        } else {
-          setIsCompleted(true);
+          if (mode === "TRAINING") {
+            for (const c of sessionCards) {
+              if (nextInitial[c.id] === "correct") {
+                const sc = latestCards.find((card) => card.id === c.id);
+                if (
+                  sc?.lecturePool.phase === "GRADUATION_RECOMMENDED" ||
+                  (sc?.lecturePool.consecutiveCorrect ?? 0) >= 2
+                ) {
+                  candidateSet.add(c.id);
+                }
+              }
+            }
+          }
+
+          setGraduatedCandidateIds(candidateSet);
+          setSelectedGraduationIds(new Set(candidateSet));
+
+          // まだ間違えたままの問題がある場合は「間違えた問題の復習確認画面」を経由
+          const hasMistakes = Object.values(nextInitial).some((res) => res === "incorrect");
+          if (hasMistakes) {
+            setIsShowingMistakesReview(true);
+          } else {
+            setIsCompleted(true);
+          }
+          return;
         }
-        return;
+      } else {
+        // --- 2. 間違えた問題の復習中 ---
+        const nextReview = { ...reviewAnswers, [cardId]: result };
+        setReviewAnswers(nextReview);
+
+        if (result === "correct") {
+          // 復習で正解した場合は consecutiveCorrect = 1（phase: UNGRADUATED）に更新
+          onReviewAnswer?.(cardId);
+        }
+
+        if (currentIndex + 1 >= totalCards) {
+          // 復習の出題がすべて終了
+          // まだ未克服（reviewAnswers で incorrect のまま）の問題があるか
+          const unresolvedMistakes = activeCards.filter((c) => nextReview[c.id] === "incorrect");
+          if (unresolvedMistakes.length > 0) {
+            setIsShowingMistakesReview(true);
+          } else {
+            setIsCompleted(true);
+          }
+          return;
+        }
       }
 
       // 1. 元のカードが上にスライドアウト
@@ -172,7 +225,20 @@ export function LecturePlayer({
         });
       }, 160);
     },
-    [slideState, answers, currentIndex, totalCards, onAnswer, onFinish],
+    [
+      slideState,
+      isReviewMode,
+      initialAnswers,
+      reviewAnswers,
+      currentIndex,
+      totalCards,
+      onAnswer,
+      onReviewAnswer,
+      onFinish,
+      mode,
+      sessionCards,
+      activeCards,
+    ],
   );
 
   // ② 正解を選択して次のカード
@@ -313,95 +379,133 @@ export function LecturePlayer({
     });
   }, []);
 
-  // 卒業対象カード（チェックモードで、正解かつStore上で連続正解2回以上の卒業推奨カード）
+  // 1. わからなかった: 初回チェックで不正解 かつ 復習でも未正解（または未復習）
+  const unresolvedCards = useMemo(() => {
+    return sessionCards.filter(
+      (c) => initialAnswers[c.id] === "incorrect" && reviewAnswers[c.id] !== "correct",
+    );
+  }, [sessionCards, initialAnswers, reviewAnswers]);
+
+  // 2. 卒業推奨: 初回チェックで正解し、初回チェック終了時に卒業推奨となったカード
   const graduationCards = useMemo(() => {
-    if (mode !== "TRAINING") return undefined;
-    const list = sessionCards.filter((c) => {
-      if (answers[c.id] !== "correct") return false;
-      const sc = storeCards.find((card) => card.id === c.id);
-      return (
-        sc?.lecturePool.phase === "GRADUATION_RECOMMENDED" ||
-        (sc?.lecturePool.consecutiveCorrect ?? 0) >= 2
-      );
-    });
-    return list.length > 0 ? list : undefined;
-  }, [mode, sessionCards, answers, storeCards]);
+    if (mode !== "TRAINING") return [];
+    return sessionCards.filter(
+      (c) => initialAnswers[c.id] === "correct" && graduatedCandidateIds.has(c.id),
+    );
+  }, [mode, sessionCards, initialAnswers, graduatedCandidateIds]);
 
-  // 卒業対象以外の正解カード（チェック時で卒業推奨に満たない正解カード、または全問復習モードの正解カード）
-  const displayCorrectCards = useMemo(() => {
+  // 3. 復習完了: 初回チェックで不正解だったが、復習で正解したカード
+  const reviewedCards = useMemo(() => {
+    return sessionCards.filter(
+      (c) => initialAnswers[c.id] === "incorrect" && reviewAnswers[c.id] === "correct",
+    );
+  }, [sessionCards, initialAnswers, reviewAnswers]);
+
+  // 4. わかった: 初回チェックで正解し、卒業推奨未満のカード（全問復習時は初回正解全カード）
+  const passedCards = useMemo(() => {
     if (mode !== "TRAINING") {
-      return sessionCards.filter((c) => answers[c.id] === "correct");
+      return sessionCards.filter((c) => initialAnswers[c.id] === "correct");
     }
-    return sessionCards.filter((c) => {
-      if (answers[c.id] !== "correct") return false;
-      const sc = storeCards.find((card) => card.id === c.id);
-      return (
-        sc?.lecturePool.phase !== "GRADUATION_RECOMMENDED" &&
-        (sc?.lecturePool.consecutiveCorrect ?? 0) < 2
-      );
-    });
-  }, [mode, sessionCards, answers, storeCards]);
+    return sessionCards.filter(
+      (c) => initialAnswers[c.id] === "correct" && !graduatedCandidateIds.has(c.id),
+    );
+  }, [mode, sessionCards, initialAnswers, graduatedCandidateIds]);
 
-  // 不正解カード一覧（セッション全体で現在も間違えたままのカード）
-  const incorrectCards = useMemo(() => {
-    return sessionCards.filter((c) => answers[c.id] === "incorrect");
-  }, [sessionCards, answers]);
-
-  // 卒業対象カードが存在する場合、デフォルトで全選択する
-  useEffect(() => {
-    if (graduationCards && graduationCards.length > 0) {
-      setSelectedGraduationIds(new Set(graduationCards.map((c) => c.id)));
-    } else {
-      setSelectedGraduationIds(new Set());
-    }
-  }, [graduationCards]);
-
-  // 卒業確定を行ってから閉じる
+  // 卒業確定を行ってから閉じる（右上の×ボタン、エスケープキー、完了ボタン）
   const handleCloseWithGraduation = useCallback(() => {
     if (mode === "TRAINING" && selectedGraduationIds.size > 0 && onGraduateSelected) {
-      // 実際に卒業推奨状態にあるカードのみを厳格に抽出して渡す
-      const eligibleIds = Array.from(selectedGraduationIds).filter((id) => {
-        const sc = storeCards.find((c) => c.id === id);
-        return (
-          sc?.lecturePool.phase === "GRADUATION_RECOMMENDED" ||
-          (sc?.lecturePool.consecutiveCorrect ?? 0) >= 2
-        );
-      });
+      // 卒業推奨候補として特定されたカードの中から、チェックが入っているものを卒業
+      const eligibleIds = Array.from(selectedGraduationIds).filter((id) =>
+        graduatedCandidateIds.has(id),
+      );
       if (eligibleIds.length > 0) {
         onGraduateSelected(eligibleIds);
       }
     }
     onClose();
-  }, [mode, selectedGraduationIds, onGraduateSelected, storeCards, onClose]);
+  }, [mode, selectedGraduationIds, graduatedCandidateIds, onGraduateSelected, onClose]);
 
   // 卒業確定を行ってからメインアクションを実行
   const handleMainActionWithGraduation = useCallback(() => {
     if (mode === "TRAINING" && selectedGraduationIds.size > 0 && onGraduateSelected) {
-      const eligibleIds = Array.from(selectedGraduationIds).filter((id) => {
-        const sc = storeCards.find((c) => c.id === id);
-        return (
-          sc?.lecturePool.phase === "GRADUATION_RECOMMENDED" ||
-          (sc?.lecturePool.consecutiveCorrect ?? 0) >= 2
-        );
-      });
+      const eligibleIds = Array.from(selectedGraduationIds).filter((id) =>
+        graduatedCandidateIds.has(id),
+      );
       if (eligibleIds.length > 0) {
         onGraduateSelected(eligibleIds);
       }
     }
     mainAction?.onClick();
-  }, [mode, selectedGraduationIds, onGraduateSelected, storeCards, mainAction]);
+  }, [mode, selectedGraduationIds, graduatedCandidateIds, onGraduateSelected, mainAction]);
 
-  // 結果画面の「n問を復習」実行
-  const handleReviewMistakes = useCallback(() => {
-    const mistakes = sessionCards.filter((c) => answers[c.id] === "incorrect");
-    if (mistakes.length === 0) return;
+  // キーボード操作対応
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isCompleted || isShowingMistakesReview) return;
+
+      if (e.key === "Escape") {
+        handleCloseWithGraduation();
+      } else if (e.key === " " || e.key === "Enter") {
+        e.preventDefault();
+        handleFlip();
+      } else if (e.key === "ArrowRight" || e.key === "2") {
+        e.preventDefault();
+        if (!isFlipped) {
+          handleFlip();
+        } else {
+          handleCorrect();
+        }
+      } else if (e.key === "ArrowLeft" || e.key === "1") {
+        e.preventDefault();
+        if (!isFlipped) {
+          handleFlip();
+        } else {
+          handleIncorrect();
+        }
+      } else if (e.key === "ArrowUp" || e.key === "Backspace") {
+        e.preventDefault();
+        handlePrev();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    handleFlip,
+    handleCorrect,
+    handleIncorrect,
+    handlePrev,
+    isFlipped,
+    isCompleted,
+    isShowingMistakesReview,
+    handleCloseWithGraduation,
+  ]);
+
+  // 間違えた問題の復習開始ハンドラ
+  const handleStartMistakesReview = useCallback(() => {
+    // 初回不正解かつまだ復習で正解していないカード
+    const mistakes = sessionCards.filter(
+      (c) => initialAnswers[c.id] === "incorrect" && reviewAnswers[c.id] !== "correct",
+    );
+    if (mistakes.length === 0) {
+      setIsShowingMistakesReview(false);
+      setIsCompleted(true);
+      return;
+    }
+    setIsReviewMode(true);
     setActiveCards(mistakes);
     setCurrentIndex(0);
     setIsFlipped(false);
     setIsShowingMistakesReview(false);
     setIsCompleted(false);
     setSlideState("idle");
-  }, [sessionCards, answers]);
+  }, [sessionCards, initialAnswers, reviewAnswers]);
+
+  // 間違い確認画面から結果画面へ進むハンドラ
+  const handleGoToResult = useCallback(() => {
+    setIsShowingMistakesReview(false);
+    setIsCompleted(true);
+  }, []);
 
   // カードが0枚の場合
   if (totalCards === 0) {
@@ -428,22 +532,7 @@ export function LecturePlayer({
 
   // 間違えた問題がある場合の経由画面
   if (isShowingMistakesReview) {
-    const mistakes = sessionCards.filter((c) => answers[c.id] === "incorrect");
-
-    const handleStartMistakesReview = () => {
-      if (mistakes.length === 0) return;
-      setActiveCards(mistakes);
-      setCurrentIndex(0);
-      setIsFlipped(false);
-      setIsShowingMistakesReview(false);
-      setIsCompleted(false);
-      setSlideState("idle");
-    };
-
-    const handleGoToResult = () => {
-      setIsShowingMistakesReview(false);
-      setIsCompleted(true);
-    };
+    const mistakes = unresolvedCards;
 
     return (
       <div className="animate-fadeIn fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md select-none">
@@ -457,9 +546,9 @@ export function LecturePlayer({
           </div>
 
           <button
-            onClick={onClose}
+            onClick={handleCloseWithGraduation}
             className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
-            title="閉じる"
+            title="閉じる (Esc)"
           >
             <XIcon size={18} />
           </button>
@@ -535,16 +624,17 @@ export function LecturePlayer({
   // 演習完了リザルト画面
   if (isCompleted) {
     const totalCount = sessionCards.length;
-    const correctCount = (graduationCards?.length ?? 0) + displayCorrectCards.length;
+    const correctCount = graduationCards.length + passedCards.length;
 
     return (
       <PracticeResultView
         title={lectureTitle}
         totalCount={totalCount}
         correctCount={correctCount}
-        incorrectCards={incorrectCards}
-        correctCards={displayCorrectCards}
+        unresolvedCards={unresolvedCards}
         graduationCards={graduationCards}
+        reviewedCards={reviewedCards}
+        passedCards={passedCards}
         selectedGraduationIds={selectedGraduationIds}
         onToggleGraduationId={handleToggleGraduationId}
         mainAction={
@@ -556,7 +646,7 @@ export function LecturePlayer({
               }
             : undefined
         }
-        onReviewMistakes={incorrectCards.length > 0 ? handleReviewMistakes : undefined}
+        onReviewMistakes={unresolvedCards.length > 0 ? handleStartMistakesReview : undefined}
         onClose={handleCloseWithGraduation}
       />
     );
@@ -599,7 +689,7 @@ export function LecturePlayer({
             {currentIndex + 1} / {totalCards}
           </span>
           <button
-            onClick={onClose}
+            onClick={handleCloseWithGraduation}
             className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
             title="演習を中断して戻る (Esc)"
           >

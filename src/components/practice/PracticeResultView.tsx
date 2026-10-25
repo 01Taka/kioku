@@ -6,14 +6,20 @@ export interface PracticeResultViewProps {
   title: string;
   /** 全問題数 */
   totalCount: number;
-  /** 正解数 */
+  /** 初回正解数 */
   correctCount: number;
-  /** 不正解カード一覧 */
-  incorrectCards: PracticeCardItem[];
-  /** 正解カード一覧（教材チェック時は卒業対象以外の正解カード） */
-  correctCards: PracticeCardItem[];
-  /** 卒業対象カード一覧（教材チェック時のみ存在） */
+  /** 1. わからなかった（初回不正解かつ復習未正解） */
+  unresolvedCards?: PracticeCardItem[];
+  /** 互換用: 旧 incorrectCards */
+  incorrectCards?: PracticeCardItem[];
+  /** 2. 卒業推奨（初回正解かつ卒業推奨昇格） */
   graduationCards?: PracticeCardItem[];
+  /** 3. 復習完了（初回不正解だが復習で正解） */
+  reviewedCards?: PracticeCardItem[];
+  /** 4. わかった（初回正解で卒業推奨未満） */
+  passedCards?: PracticeCardItem[];
+  /** 互換用: 旧 correctCards */
+  correctCards?: PracticeCardItem[];
   /** 卒業対象として選択されているカードIDセット */
   selectedGraduationIds?: Set<string>;
   /** 卒業対象の選択トグル関数 */
@@ -34,16 +40,22 @@ export function PracticeResultView({
   title,
   totalCount,
   correctCount,
+  unresolvedCards,
   incorrectCards,
+  graduationCards = [],
+  reviewedCards = [],
+  passedCards,
   correctCards,
-  graduationCards,
   selectedGraduationIds,
   onToggleGraduationId,
   mainAction,
   onReviewMistakes,
   onClose,
 }: PracticeResultViewProps) {
-  const hasGraduation = Boolean(graduationCards && graduationCards.length > 0);
+  const unresolved = unresolvedCards ?? incorrectCards ?? [];
+  const passed = passedCards ?? correctCards ?? [];
+  const hasGraduation = graduationCards.length > 0;
+  const hasReviewed = reviewedCards.length > 0;
   const selectedGraduationCount = selectedGraduationIds ? selectedGraduationIds.size : 0;
   const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
@@ -75,7 +87,14 @@ export function PracticeResultView({
               <span className="mx-2 text-slate-600">/</span>
               <span>{totalCount}</span>
             </div>
-            <p className="mt-2 text-xs font-medium text-slate-400">正解率 {accuracy}%</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs font-medium text-slate-400">
+              <span>正解率 {accuracy}%</span>
+              {hasReviewed && (
+                <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[11px] font-bold text-indigo-400">
+                  🔄 復習完了: {reviewedCards.length}問
+                </span>
+              )}
+            </div>
 
             {/* ③ その下にメインボタンを配置 */}
             {mainAction && (
@@ -96,32 +115,32 @@ export function PracticeResultView({
             )}
           </div>
 
-          {/* ④ セクション1: わからなかった（n） */}
+          {/* ④ 1. わからなかった（n） */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-200">
-                わからなかった（{incorrectCards.length}）
+                1. わからなかった（{unresolved.length}）
               </h3>
 
-              {incorrectCards.length > 0 && onReviewMistakes && (
+              {unresolved.length > 0 && onReviewMistakes && (
                 <button
                   type="button"
                   onClick={onReviewMistakes}
                   className="flex cursor-pointer items-center space-x-1.5 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white shadow-md shadow-rose-600/30 transition hover:bg-rose-500"
                 >
                   <UndoIcon size={12} />
-                  <span>{incorrectCards.length}問を復習</span>
+                  <span>{unresolved.length}問を復習</span>
                 </button>
               )}
             </div>
 
-            {incorrectCards.length === 0 ? (
+            {unresolved.length === 0 ? (
               <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 text-center text-xs text-slate-500">
-                間違えた問題はありません 🎉
+                未克服の間違えた問題はありません 🎉
               </div>
             ) : (
               <div className="space-y-2">
-                {incorrectCards.map((card, idx) => (
+                {unresolved.map((card, idx) => (
                   <div
                     key={card.id}
                     className="rounded-xl border border-rose-950/60 bg-rose-950/20 p-3.5 transition"
@@ -152,12 +171,12 @@ export function PracticeResultView({
             )}
           </section>
 
-          {/* ⑤ セクション2: 卒業（x）★教材のチェックに限り、卒業した問題がある場合 */}
-          {hasGraduation && graduationCards && (
+          {/* ⑤ 2. 卒業推奨（n）★教材のチェックに限り、卒業対象カードがある場合 */}
+          {hasGraduation && (
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-emerald-400">
-                  卒業（{selectedGraduationCount}）
+                  2. 卒業推奨（{selectedGraduationCount}）
                 </h3>
 
                 {onToggleGraduationId && (
@@ -213,7 +232,7 @@ export function PracticeResultView({
                           <div className="flex items-center space-x-2 text-[11px]">
                             <span className="font-mono text-slate-500">#{idx + 1}</span>
                             <span className="py-0.2 rounded-full border border-emerald-800/80 bg-emerald-950/80 px-2 text-[10px] font-bold text-emerald-300">
-                              🎓 卒業対象
+                              🎓 卒業推奨
                             </span>
                             {card.badge && <span className="text-slate-400">({card.badge})</span>}
                           </div>
@@ -231,17 +250,50 @@ export function PracticeResultView({
             </section>
           )}
 
-          {/* ⑥ セクション3: わかった（m） */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-200">わかった（{correctCards.length}）</h3>
+          {/* ⑥ 3. 復習完了（n）★初回不正解だったが復習で正解したカード */}
+          {hasReviewed && (
+            <section className="space-y-3">
+              <h3 className="text-xs font-bold text-indigo-400">
+                3. 復習完了（{reviewedCards.length}）
+              </h3>
 
-            {correctCards.length === 0 ? (
+              <div className="space-y-2">
+                {reviewedCards.map((card, idx) => (
+                  <div
+                    key={card.id}
+                    className="rounded-xl border border-indigo-950/70 bg-indigo-950/20 p-3.5 transition"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2 text-[11px]">
+                        <span className="font-mono text-slate-500">Q{idx + 1}.</span>
+                        <span className="py-0.2 rounded-full border border-indigo-800/80 bg-indigo-950/80 px-2 text-[10px] font-bold text-indigo-300">
+                          🔄 復習完了
+                        </span>
+                        {card.badge && <span className="text-slate-400">({card.badge})</span>}
+                      </div>
+
+                      <p className="text-xs font-semibold whitespace-pre-wrap text-slate-100">
+                        {card.front}
+                      </p>
+                      <p className="text-xs whitespace-pre-wrap text-slate-400">{card.back}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ⑦ 4. わかった（n）★初回正解で卒業推奨未満のカード */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-bold text-slate-200">4. わかった（{passed.length}）</h3>
+
+            {passed.length === 0 ? (
               <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4 text-center text-xs text-slate-500">
-                正解した問題はありません
+                初回正解した問題はありません
               </div>
             ) : (
               <div className="space-y-2">
-                {correctCards.map((card, idx) => (
+                {passed.map((card, idx) => (
                   <div
                     key={card.id}
                     className="rounded-xl border border-slate-800 bg-slate-900/80 p-3.5 transition"

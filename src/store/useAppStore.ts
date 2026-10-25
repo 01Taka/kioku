@@ -34,6 +34,7 @@ import {
 import { getActiveDateKey, getNextCutoffTime, isReviewedToday } from "../utils/dateUtils";
 import { buildCommonPoolQueue, type CommonPoolQueueBuildResult } from "../utils/queueBuilder";
 import {
+  applyLectureReviewAnswer,
   applyLectureTrainingAnswer,
   buildLectureTrainingQueue,
   type LectureTrainingTransitionResult,
@@ -111,6 +112,7 @@ interface AppState {
     result: "correct" | "incorrect",
     now?: Date,
   ) => LectureTrainingTransitionResult | null;
+  answerLectureReviewCard: (cardId: string, now?: Date) => void;
   graduateRecommendedCardsInLecture: (lectureId: string, now?: Date) => number;
   batchGraduateCards: (cardIds: string[], now?: Date) => number;
 
@@ -441,6 +443,17 @@ export const useAppStore = create<AppState>()(
         }));
 
         return transitionResult;
+      },
+
+      answerLectureReviewCard: (cardId, now = new Date()) => {
+        const card = get().cards.find((c) => c.id === cardId);
+        if (!card) return;
+
+        const updatedCard = applyLectureReviewAnswer(card, now);
+
+        set((state) => ({
+          cards: state.cards.map((c) => (c.id === cardId ? updatedCard : c)),
+        }));
       },
 
       graduateRecommendedCardsInLecture: (lectureId, now = new Date()) => {

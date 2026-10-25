@@ -202,10 +202,10 @@ export interface ExportCardRecord {
 
   // 各プールステート
   lecturePool: CardLecturePoolState;
-  commonPool: CardCommonPoolState | null;
+  commonPool?: CardCommonPoolState | null;
 
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
+  createdAt?: string; // ISO 8601
+  updatedAt?: string; // ISO 8601
 }
 
 /**
@@ -524,6 +524,7 @@ export function importBackupData(
   lectures: Lecture[];
   cards: Card[];
 } {
+  const now = new Date().toISOString();
   const courseMap = new Map(currentCourses.map((c) => [c.id, c]));
   const lectureMap = new Map(currentLectures.map((l) => [l.id, l]));
   const cardMap = new Map(currentCards.map((c) => [c.id, c]));
@@ -535,8 +536,8 @@ export function importBackupData(
         id: record.courseId,
         name: record.courseName,
         priorityMode: record.coursePriorityMode ?? "NORMAL",
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
+        createdAt: record.createdAt ?? now,
+        updatedAt: record.updatedAt ?? now,
       });
     }
 
@@ -548,8 +549,8 @@ export function importBackupData(
         name: record.lectureName,
         order: record.lectureOrder ?? 0,
         customPriorityMode: null,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
+        createdAt: record.createdAt ?? now,
+        updatedAt: record.updatedAt ?? now,
       });
     }
 
@@ -560,12 +561,12 @@ export function importBackupData(
       lectureId: record.lectureId,
       front: record.front,
       back: record.back,
-      isSuspended: record.isSuspended,
+      isSuspended: Boolean(record.isSuspended),
       bundleId: record.bundleId,
       lecturePool: normalizeLecturePoolState(record.lecturePool),
-      commonPool: record.commonPool,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
+      commonPool: record.commonPool ?? null,
+      createdAt: record.createdAt ?? now,
+      updatedAt: record.updatedAt ?? now,
     });
   }
 

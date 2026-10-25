@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-25T00:00:00.000Z",
+  "cards": [
+    {
+      "courseId": "course_circuits",
+      "courseName": "電気回路I",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "lec_circuits_1",
+      "lectureName": "第1回 オームの法則とキルヒホッフの法則",
+      "lectureOrder": 1,
+      "id": "card_c1_1",
+      "front": "オームの法則の基本方程式は？",
+      "back": "V = R · I (電圧 = 抵抗 × 電流)",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "UNATTEMPTED",
+        "consecutiveCorrect": 0,
+        "lastAttemptAt": null
+      },
+      "createdAt": "2026-10-25T00:00:00.000Z",
+      "updatedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "courseId": "course_circuits",
+      "courseName": "電気回路I",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "lec_circuits_1",
+      "lectureName": "第1回 オームの法則とキルヒホッフの法則",
+      "lectureOrder": 1,
+      "id": "card_c1_2",
+      "front": "キルヒホッフの第1法則（電流則 KCL）の内容は？",
+      "back": "回路の任意の接続点（節点）に流入する電流の総和は、流出する電流の総和に等しい（ΣI = 0）。",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "UNGRADUATED",
+        "consecutiveCorrect": 0,
+        "lastAttemptAt": "2026-10-25T07:00:00.000Z"
+      },
+      "createdAt": "2026-10-25T00:00:00.000Z",
+      "updatedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "courseId": "course_circuits",
+      "courseName": "電気回路I",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "lec_circuits_1",
+      "lectureName": "第1回 オームの法則とキルヒホッフの法則",
+      "lectureOrder": 1,
+      "id": "card_c1_3",
+      "front": "キルヒホッフの第2法則（電圧則 KVL）の内容は？",
+      "back": "回路内の任意の閉路に沿って一周したとき、起電力の総和と電圧降下の総和は等しい（ΣV = 0）。",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "UNGRADUATED",
+        "consecutiveCorrect": 1,
+        "lastAttemptAt": "2026-10-24T23:00:00.000Z"
+      },
+      "createdAt": "2026-10-25T00:00:00.000Z",
+      "updatedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "courseId": "course_circuits",
+      "courseName": "電気回路I",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "lec_circuits_1",
+      "lectureName": "第1回 オームの法則とキルヒホッフの法則",
+      "lectureOrder": 1,
+      "id": "card_c1_4",
+      "front": "抵抗 R の単位とその記号は？",
+      "back": "オーム [Ω]",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "createdAt": "2026-10-25T00:00:00.000Z",
+      "updatedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "courseId": "course_circuits",
+      "courseName": "電気回路I",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "lec_circuits_2",
+      "lectureName": "第2回 RL・RC過渡現象",
+      "lectureOrder": 2,
+      "id": "card_c1_5",
+      "front": "RL直列回路の時定数 τ の式は？",
+      "back": "τ = L / R",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "UNATTEMPTED",
+        "consecutiveCorrect": 0,
+        "lastAttemptAt": null
+      },
+      "createdAt": "2026-10-25T00:00:00.000Z",
+      "updatedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "courseId": "course_linear_algebra",
+      "courseName": "線形代数",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "lec_algebra_1",
+      "lectureName": "第1回 行列の基本変形と階数",
+      "lectureOrder": 1,
+      "id": "card_c2_1",
+      "front": "行列の行基本変形における3つの許容操作は？",
+      "back": "1. 2つの行を入れ替える\n2. ある行を0でない定数倍する\n3. ある行の定数倍を別の行に加える",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "UNATTEMPTED",
+        "consecutiveCorrect": 0,
+        "lastAttemptAt": null
+      },
+      "createdAt": "2026-10-25T00:00:00.000Z",
+      "updatedAt": "2026-10-25T00:00:00.000Z"
+    }
+  ]
+}

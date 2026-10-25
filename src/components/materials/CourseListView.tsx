@@ -1,6 +1,8 @@
 import { useState } from "react";
 
+import templateMainData from "../../../templates/template-main-data.json";
 import { useAppStore } from "../../store/useAppStore";
+import type { AppBackupData } from "../../types/schema";
 import { isWaitingCardLocked } from "../../types/schema";
 import { BookOpenIcon, PlusIcon, TrashIcon } from "../icons";
 
@@ -9,7 +11,8 @@ interface CourseListViewProps {
 }
 
 export function CourseListView({ onSelectCourse }: CourseListViewProps) {
-  const { courses, lectures, cards, settings, addCourse, deleteCourse } = useAppStore();
+  const { courses, lectures, cards, settings, addCourse, deleteCourse, importBackupJson } =
+    useAppStore();
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [newCourseName, setNewCourseName] = useState("");
@@ -21,6 +24,14 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
     setNewCourseName("");
     setIsAddingCourse(false);
     onSelectCourse(created.id);
+  };
+
+  const handleImportTemplate = () => {
+    importBackupJson(templateMainData as unknown as AppBackupData);
+    const latestCourses = useAppStore.getState().courses;
+    if (latestCourses.length > 0) {
+      onSelectCourse(latestCourses[0].id);
+    }
   };
 
   return (
@@ -82,12 +93,22 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
       {/* 科目カードグリッド / リスト */}
       <div className="flex-1 overflow-y-auto pr-1">
         {courses.length === 0 ? (
-          <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/40 p-12 text-center">
+          <div className="flex flex-col items-center justify-center space-y-4 rounded-2xl border border-slate-800 bg-slate-900/40 p-12 text-center">
             <span className="text-3xl">📚</span>
-            <p className="text-xs font-medium text-slate-300">登録されている科目がありません</p>
-            <p className="text-[11px] text-slate-500">
-              右上の「科目を追加」ボタンから最初の科目を登録しましょう。
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-slate-300">登録されている科目がありません</p>
+              <p className="text-[11px] text-slate-500">
+                右上の「科目を追加」ボタンから最初の科目を登録するか、テンプレートを取り込むことができます。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleImportTemplate}
+              className="inline-flex cursor-pointer items-center space-x-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500 active:scale-[0.98]"
+            >
+              <span>📥</span>
+              <span>テンプレートを取り込む</span>
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">

@@ -17,10 +17,25 @@ export function HomeMainStartModal({ onClose, onStartSession }: HomeMainStartMod
   const queueResult = getCommonPoolQueue();
   const batch = queueResult.sessionBatch;
 
-  // 3色内訳
-  const retryCount = queueResult.allTargetCards.filter((c) => c.reviewCategory === "RETRY").length;
-  const dueCount = queueResult.allTargetCards.filter((c) => c.reviewCategory === "DUE").length;
-  const earlyCount = queueResult.allTargetCards.filter((c) => c.reviewCategory === "EARLY").length;
+  // 3色内訳（今回出題するバッチの内訳）
+  const retryCount = batch.filter((c) => c.reviewCategory === "RETRY").length;
+  const dueCount = batch.filter((c) => c.reviewCategory === "DUE").length;
+  const earlyCount = batch.filter((c) => c.reviewCategory === "EARLY").length;
+  const totalRemainingCount = Math.max(queueResult.totalRemainingCount, batch.length);
+
+  // スタートボタンの色判定
+  // 1. 出題できる問題がなければグレー
+  // 2. リベンジが1つでもあればリベンジの色（amber）
+  // 3. リベンジがなく本日期日が1つでもあれば本日期日の色（emerald）
+  // 4. 先取りしかなければ先取りの色（purple）
+  const startButtonColor =
+    batch.length === 0
+      ? "bg-slate-800 text-slate-500 border border-slate-700/60 shadow-none cursor-not-allowed"
+      : retryCount > 0
+        ? "bg-amber-600 text-white shadow-lg shadow-amber-600/30 hover:bg-amber-500 cursor-pointer"
+        : dueCount > 0
+          ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 cursor-pointer"
+          : "bg-purple-600 text-white shadow-lg shadow-purple-600/30 hover:bg-purple-500 cursor-pointer";
 
   return (
     <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
@@ -64,7 +79,7 @@ export function HomeMainStartModal({ onClose, onStartSession }: HomeMainStartMod
             </div>
           </div>
           <p className="pt-1 text-center font-mono text-[11px] text-slate-400">
-            合計出題待ち: <strong>{queueResult.totalRemainingCount}</strong> 枚
+            合計出題待ち: <strong>{totalRemainingCount}</strong> 枚
           </p>
         </div>
 
@@ -89,12 +104,12 @@ export function HomeMainStartModal({ onClose, onStartSession }: HomeMainStartMod
               onStartSession();
             }}
             disabled={batch.length === 0}
-            className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`flex w-full items-center justify-center space-x-2 rounded-xl py-3.5 text-sm font-bold transition ${startButtonColor}`}
           >
             <PlayIcon size={16} />
             <span>
               {batch.length > 0
-                ? "スタート (10問マイクロセッション)"
+                ? `スタート (${batch.length}問マイクロセッション)`
                 : "出題対象のカードがありません"}
             </span>
           </button>

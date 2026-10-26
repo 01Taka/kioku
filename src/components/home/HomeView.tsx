@@ -47,6 +47,25 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
   }, [getCommonPoolQueue]);
   const hasMainBatch = commonPoolQueue.sessionBatch.length > 0;
 
+  // メイン「はじめる」ボタンの色判定
+  // 1. 出題できる問題がなければグレー
+  // 2. リベンジが1つでもあればリベンジの色（amber）
+  // 3. リベンジがなく本日期日が1つでもあれば本日期日の色（emerald）
+  // 4. 先取りしかなければ先取りの色（purple）
+  const mainStartButtonColor = useMemo(() => {
+    const batch = commonPoolQueue.sessionBatch;
+    if (batch.length === 0) {
+      return "bg-slate-800 text-slate-500 border border-slate-700/60 shadow-none cursor-not-allowed";
+    }
+    if (batch.some((c) => c.reviewCategory === "RETRY")) {
+      return "bg-amber-600 text-white shadow-lg shadow-amber-600/30 hover:bg-amber-500 cursor-pointer";
+    }
+    if (batch.some((c) => c.reviewCategory === "DUE")) {
+      return "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 cursor-pointer";
+    }
+    return "bg-purple-600 text-white shadow-lg shadow-purple-600/30 hover:bg-purple-500 cursor-pointer";
+  }, [commonPoolQueue.sessionBatch]);
+
   // 科目・講義マップ（所属パンくず用）
   const courseMap = useMemo(() => new Map(courses.map((c) => [c.id, c.name])), [courses]);
   const lectureMap = useMemo(() => new Map(lectures.map((l) => [l.id, l.name])), [lectures]);
@@ -207,7 +226,7 @@ export function HomeView({ activeSubTab, onSelectSubTab, onStartCommonSession }:
                 type="button"
                 onClick={() => setIsMainStartModalOpen(true)}
                 disabled={!hasMainBatch}
-                className="flex w-full cursor-pointer items-center justify-center space-x-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                className={`flex w-full items-center justify-center space-x-2 rounded-xl px-6 py-3 text-sm font-bold transition sm:w-auto ${mainStartButtonColor}`}
               >
                 <PlayIcon size={16} />
                 <span>はじめる</span>

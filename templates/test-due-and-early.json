@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-26T01:00:00.000Z",
+  "cards": [
+    {
+      "courseId": "test_course_due",
+      "courseName": "【テスト】期日・先取り混合検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_due_1",
+      "lectureName": "第1回 本日期日確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_due_1",
+      "front": "【本日期日テスト1】本日が期日の問題が1つでもある場合、はじめるボタンの色は何色？",
+      "back": "エメラルド（緑色）",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-10-25T00:00:00.000Z",
+          "stability": 2.0,
+          "difficulty": 5.0,
+          "elapsed_days": 1,
+          "scheduled_days": 1,
+          "reps": 1,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    },
+    {
+      "courseId": "test_course_due",
+      "courseName": "【テスト】期日・先取り混合検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_due_1",
+      "lectureName": "第1回 本日期日確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_due_2",
+      "front": "【本日期日テスト2】この問題を「もう一度(Again)」で間違えるとボタンは何色に変わる？",
+      "back": "リベンジの色（オレンジ/アンバー）",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-10-25T05:00:00.000Z",
+          "stability": 2.2,
+          "difficulty": 5.0,
+          "elapsed_days": 1,
+          "scheduled_days": 1,
+          "reps": 1,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    },
+    {
+      "courseId": "test_course_due",
+      "courseName": "【テスト】期日・先取り混合検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_due_1",
+      "lectureName": "第1回 本日期日確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_due_early_1",
+      "front": "【混合テスト3】先取り補充枠として同時に出題される未来の期日カード",
+      "back": "期日2問＋先取り2問で、モーダル内訳に正しく 🎯2, ⚡2 と反映されます",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-10-30T00:00:00.000Z",
+          "stability": 5.0,
+          "difficulty": 4.0,
+          "elapsed_days": 1,
+          "scheduled_days": 4,
+          "reps": 2,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    },
+    {
+      "courseId": "test_course_due",
+      "courseName": "【テスト】期日・先取り混合検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_due_1",
+      "lectureName": "第1回 本日期日確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_due_early_2",
+      "front": "【混合テスト4】先取り補充枠の未来の期日カードその2",
+      "back": "正しく先取り枠としてバッチに組み込まれます",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-10-31T00:00:00.000Z",
+          "stability": 6.0,
+          "difficulty": 4.0,
+          "elapsed_days": 1,
+          "scheduled_days": 5,
+          "reps": 2,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    }
+  ]
+}

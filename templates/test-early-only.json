@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-26T01:00:00.000Z",
+  "cards": [
+    {
+      "courseId": "test_course_early",
+      "courseName": "【テスト】先取り検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_early_1",
+      "lectureName": "第1回 先取り確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_early_1",
+      "front": "【先取りテスト1】先取りのみの場合のボタン色は何色？",
+      "back": "パープル（紫色）",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-10-30T00:00:00.000Z",
+          "stability": 5.0,
+          "difficulty": 4.0,
+          "elapsed_days": 1,
+          "scheduled_days": 4,
+          "reps": 2,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    },
+    {
+      "courseId": "test_course_early",
+      "courseName": "【テスト】先取り検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_early_1",
+      "lectureName": "第1回 先取り確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_early_2",
+      "front": "【先取りテスト2】未来の復習期日（翌日以降）のカードはどの枠に入る？",
+      "back": "先取り補充枠（パープル）",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-10-31T00:00:00.000Z",
+          "stability": 6.0,
+          "difficulty": 4.0,
+          "elapsed_days": 1,
+          "scheduled_days": 5,
+          "reps": 2,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    },
+    {
+      "courseId": "test_course_early",
+      "courseName": "【テスト】先取り検証科目",
+      "coursePriorityMode": "NORMAL",
+      "lectureId": "test_lec_early_1",
+      "lectureName": "第1回 先取り確認用講義",
+      "lectureOrder": 1,
+      "id": "test_card_early_3",
+      "front": "【先取りテスト3】モーダル内の出題内訳で先取りに正しく反映される？",
+      "back": "はい、先取りの枠に正しい枚数がカウントされます",
+      "isSuspended": false,
+      "lecturePool": {
+        "phase": "GRADUATED",
+        "consecutiveCorrect": 2,
+        "lastAttemptAt": "2026-10-24T00:00:00.000Z"
+      },
+      "commonPool": {
+        "fsrs": {
+          "due": "2026-11-01T00:00:00.000Z",
+          "stability": 7.0,
+          "difficulty": 4.0,
+          "elapsed_days": 1,
+          "scheduled_days": 6,
+          "reps": 2,
+          "lapses": 0,
+          "state": 2,
+          "last_review": "2026-10-24T00:00:00.000Z"
+        },
+        "lastReviewedAt": "2026-10-24T00:00:00.000Z",
+        "consecutiveFailCount": 0
+      },
+      "createdAt": "2026-10-24T00:00:00.000Z",
+      "updatedAt": "2026-10-24T00:00:00.000Z"
+    }
+  ]
+}

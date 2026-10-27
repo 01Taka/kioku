@@ -77,7 +77,7 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
               value={newCourseName}
               onChange={(e) => setNewCourseName(e.target.value)}
               placeholder="科目名を入力 (例: 電気回路I, 線形代数)"
-              className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-indigo-500"
+              className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-indigo-500"
               autoFocus
             />
             <button

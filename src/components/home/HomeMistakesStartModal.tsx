@@ -48,7 +48,7 @@ export function HomeMistakesStartModal({
               const val = e.target.value;
               setSelectedCount(val === "ALL" ? "ALL" : Number(val));
             }}
-            className="w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white outline-none focus:border-amber-500"
+            className="w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-amber-500"
           >
             <option value={10}>10問 （デフォルト）</option>
             <option value={20}>20問</option>

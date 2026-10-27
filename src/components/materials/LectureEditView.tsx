@@ -117,7 +117,7 @@ export function LectureEditView({
                   value={singleFront}
                   onChange={(e) => setSingleFront(e.target.value)}
                   placeholder="問題文を入力"
-                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 p-2 text-xs text-white outline-none focus:border-indigo-500"
+                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 p-2 text-base text-white outline-none focus:border-indigo-500"
                   autoFocus
                 />
               </div>
@@ -131,7 +131,7 @@ export function LectureEditView({
                   value={singleBack}
                   onChange={(e) => setSingleBack(e.target.value)}
                   placeholder="解答を入力"
-                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 p-2 text-xs text-white outline-none focus:border-indigo-500"
+                  className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 p-2 text-base text-white outline-none focus:border-indigo-500"
                 />
               </div>
             </div>

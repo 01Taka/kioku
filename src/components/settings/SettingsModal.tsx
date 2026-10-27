@@ -163,7 +163,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       waitingDurationHours: Number(e.target.value),
                     })
                   }
-                  className="w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-white outline-none sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-base text-white outline-none sm:w-auto"
                 >
                   <option value={1}>1 時間</option>
                   <option value={4}>4 時間</option>
@@ -220,7 +220,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     sortOrder: e.target.value as "DUE_ASC" | "SHUFFLE",
                   })
                 }
-                className="w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white outline-none sm:w-auto sm:flex-shrink-0"
+                className="w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-base text-white outline-none sm:w-auto sm:flex-shrink-0"
               >
                 <option value="DUE_ASC">期日昇順 (DUE_ASC)</option>
                 <option value="SHUFFLE">シャッフル (SHUFFLE)</option>

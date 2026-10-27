@@ -576,7 +576,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                     value={newLectureName}
                     onChange={(e) => setNewLectureName(e.target.value)}
                     placeholder="講義名を入力 (例: 第1回 オームの法則)"
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white outline-none focus:border-indigo-500"
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-base text-white outline-none focus:border-indigo-500"
                     autoFocus
                   />
                   <button

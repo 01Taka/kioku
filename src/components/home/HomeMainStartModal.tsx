@@ -144,7 +144,7 @@ export function HomeMainStartModal({ onClose, onStartSession }: HomeMainStartMod
                       sortOrder: e.target.value as "DUE_ASC" | "SHUFFLE",
                     })
                   }
-                  className="w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-indigo-500"
+                  className="w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-indigo-500"
                 >
                   <option value="DUE_ASC">📅 due順（復習期日が古い順に確実に出題）</option>
                   <option value="SHUFFLE">

@@ -189,7 +189,7 @@ export function AiBatchImportModal({
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               placeholder={`[\n  {\n    "question": "ここに問題文",\n    "answer": "ここに解答文"\n  }\n]`}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 font-mono text-xs text-slate-100 transition focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 font-mono text-base text-slate-100 transition focus:border-indigo-500 focus:outline-none"
             />
           </div>
 
@@ -205,7 +205,7 @@ export function AiBatchImportModal({
               type="text"
               value={customBundleId}
               onChange={(e) => setCustomBundleId(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 font-mono text-xs text-indigo-300 focus:border-indigo-500 focus:outline-none sm:w-52"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 font-mono text-base text-indigo-300 focus:border-indigo-500 focus:outline-none sm:w-52"
             />
           </div>
 

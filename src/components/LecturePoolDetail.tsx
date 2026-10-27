@@ -406,7 +406,7 @@ export function LecturePoolDetail() {
                     customPriorityMode: val === "INHERIT" ? null : (val as PriorityMode),
                   });
                 }}
-                className="cursor-pointer bg-transparent text-slate-200 outline-none"
+                className="cursor-pointer bg-transparent text-base text-slate-200 outline-none"
               >
                 <option value="INHERIT" className="bg-slate-900 text-slate-300">
                   親科目継承 (
@@ -678,7 +678,7 @@ export function LecturePoolDetail() {
                     onChange={(e) => setFrontInput(e.target.value)}
                     onKeyDown={handleKeyDownOnInput}
                     placeholder="例: オームの法則の公式は？"
-                    className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-base text-white focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
                 <div>
@@ -691,7 +691,7 @@ export function LecturePoolDetail() {
                     onChange={(e) => setBackInput(e.target.value)}
                     onKeyDown={handleKeyDownOnInput}
                     placeholder="例: V = R · I"
-                    className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-base text-white focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -728,7 +728,7 @@ export function LecturePoolDetail() {
                   value={cardSearchQuery}
                   onChange={(e) => setCardSearchQuery(e.target.value)}
                   placeholder="🔍 問題・解答を検索..."
-                  className="w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 pr-6 text-xs text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1 pr-6 text-base text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                 />
                 {cardSearchQuery && (
                   <button
@@ -1119,7 +1119,7 @@ export function LecturePoolDetail() {
                   rows={4}
                   value={editFront}
                   onChange={(e) => setEditFront(e.target.value)}
-                  className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-base text-white focus:border-indigo-500 focus:outline-none"
                 />
               </div>
 
@@ -1129,7 +1129,7 @@ export function LecturePoolDetail() {
                   rows={4}
                   value={editBack}
                   onChange={(e) => setEditBack(e.target.value)}
-                  className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-base text-white focus:border-indigo-500 focus:outline-none"
                 />
               </div>
             </div>

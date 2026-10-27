@@ -58,7 +58,7 @@ export function CardEditModal({ initialFront, initialBack, onSave, onClose }: Ca
                 if (validationError) setValidationError(null);
               }}
               placeholder="問題を入力してください"
-              className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+              className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base text-white focus:border-indigo-500 focus:outline-none"
               autoFocus
             />
           </div>
@@ -74,7 +74,7 @@ export function CardEditModal({ initialFront, initialBack, onSave, onClose }: Ca
                 if (validationError) setValidationError(null);
               }}
               placeholder="解答・解説を入力してください"
-              className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
+              className="w-full resize-none rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-base text-white focus:border-indigo-500 focus:outline-none"
             />
           </div>
 

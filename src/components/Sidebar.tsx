@@ -177,7 +177,7 @@ export function Sidebar() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="🔍 科目・講義名を検索..."
-            className="w-full rounded-lg border border-slate-800 bg-slate-950/90 px-2.5 py-1.5 pr-7 text-xs text-slate-100 placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-800 bg-slate-950/90 px-2.5 py-1.5 pr-7 text-base text-slate-100 placeholder-slate-500 transition focus:border-indigo-500 focus:outline-none"
           />
           {searchQuery && (
             <button
@@ -227,7 +227,7 @@ export function Sidebar() {
             value={newCourseName}
             onChange={(e) => setNewCourseName(e.target.value)}
             autoFocus
-            className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-base text-white focus:border-indigo-500 focus:outline-none"
           />
           <div className="flex justify-end space-x-2">
             <button
@@ -297,13 +297,13 @@ export function Sidebar() {
                       type="text"
                       value={editingCourseName}
                       onChange={(e) => setEditingCourseName(e.target.value)}
-                      className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white"
+                      className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-base text-white"
                     />
                     <div className="flex items-center justify-between text-xs">
                       <select
                         value={editingCoursePriority}
                         onChange={(e) => setEditingCoursePriority(e.target.value as PriorityMode)}
-                        className="rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-xs text-slate-200"
+                        className="rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-base text-slate-200"
                       >
                         <option value="NORMAL">通常</option>
                         <option value="PRIORITY">優先</option>
@@ -618,7 +618,7 @@ export function Sidebar() {
                           value={newLectureName}
                           onChange={(e) => setNewLectureName(e.target.value)}
                           autoFocus
-                          className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                          className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-base text-white focus:border-indigo-500 focus:outline-none"
                         />
                         <div className="flex justify-end space-x-1.5">
                           <button

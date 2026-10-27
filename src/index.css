@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+/* iOS Safari auto-zoom prevention:
+   iOS Safari automatically zooms in on input, textarea, and select elements
+   with a font-size smaller than 16px (1rem) when focused.
+   Ensuring a base font size of at least 16px prevents this behavior. */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+

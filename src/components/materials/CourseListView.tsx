@@ -4,18 +4,20 @@ import templateMainData from "../../../templates/template-main-data.json";
 import { useAppStore } from "../../store/useAppStore";
 import type { AppBackupData } from "../../types/schema";
 import { CourseSchema, isWaitingCardLocked } from "../../types/schema";
-import { BookOpenIcon, PlusIcon, TrashIcon } from "../icons";
+import { BookOpenIcon, EditIcon, MoreVerticalIcon, PlusIcon, TrashIcon } from "../icons";
 
 interface CourseListViewProps {
   onSelectCourse: (courseId: string) => void;
 }
 
 export function CourseListView({ onSelectCourse }: CourseListViewProps) {
-  const { courses, lectures, cards, settings, addCourse, deleteCourse, importBackupJson } =
+  const { courses, lectures, cards, settings, addCourse, updateCourse, deleteCourse, importBackupJson } =
     useAppStore();
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [newCourseName, setNewCourseName] = useState("");
+  const [openMenuCourseId, setOpenMenuCourseId] = useState<string | null>(null);
+  const [renamingCourse, setRenamingCourse] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreateCourse = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,23 +158,57 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
                       </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (
-                          window.confirm(
-                            `科目「${course.name}」と配下の講義・カードをすべて削除しますか？`,
-                          )
-                        ) {
-                          deleteCourse(course.id);
+                    <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenMenuCourseId((prev) => (prev === course.id ? null : course.id))
                         }
-                      }}
-                      className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-800 hover:text-rose-400"
-                      title="科目を削除"
-                    >
-                      <TrashIcon size={13} />
-                    </button>
+                        className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                        title="メニューを開く"
+                      >
+                        <MoreVerticalIcon size={16} />
+                      </button>
+
+                      {openMenuCourseId === course.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setOpenMenuCourseId(null)}
+                          />
+                          <div className="animate-fadeIn absolute top-8 right-0 z-50 w-36 rounded-xl border border-slate-700 bg-slate-900 py-1 text-xs text-slate-200 shadow-2xl">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuCourseId(null);
+                                setRenamingCourse({ id: course.id, name: course.name });
+                              }}
+                              className="flex w-full cursor-pointer items-center space-x-2 px-3 py-2 text-left hover:bg-slate-800"
+                            >
+                              <EditIcon size={14} className="text-slate-400" />
+                              <span>名前の変更</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuCourseId(null);
+                                if (
+                                  window.confirm(
+                                    `科目「${course.name}」と配下の講義・カードをすべて削除しますか？`,
+                                  )
+                                ) {
+                                  deleteCourse(course.id);
+                                }
+                              }}
+                              className="flex w-full cursor-pointer items-center space-x-2 px-3 py-2 text-left text-rose-400 hover:bg-slate-800 hover:text-rose-300"
+                            >
+                              <TrashIcon size={14} />
+                              <span>削除</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* 3フェーズ進捗バー（卒業済み / 現在チェック可能 / それ以外） */}
@@ -209,6 +245,56 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
           </div>
         )}
       </div>
+
+      {/* 教材（科目）名前変更モーダル */}
+      {renamingCourse && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          onClick={() => setRenamingCourse(null)}
+        >
+          <div
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-white">教材（科目）名の変更</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!renamingCourse.name.trim()) return;
+                updateCourse(renamingCourse.id, { name: renamingCourse.name.trim() });
+                setRenamingCourse(null);
+              }}
+              className="space-y-4"
+            >
+              <input
+                type="text"
+                value={renamingCourse.name}
+                onChange={(e) =>
+                  setRenamingCourse({ ...renamingCourse, name: e.target.value })
+                }
+                autoFocus
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-indigo-500"
+              />
+              <div className="flex justify-end space-x-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRenamingCourse(null)}
+                  className="cursor-pointer rounded-lg px-3 py-2 font-medium text-slate-400 hover:text-white"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={!renamingCourse.name.trim()}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  保存
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

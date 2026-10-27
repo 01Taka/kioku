@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import { LectureSchema } from "../../types/schema";
-import { ArrowLeftIcon, EditIcon, MoreVerticalIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
+import { ArrowLeftIcon, ClipboardIcon, EditIcon, MoreVerticalIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
 import { LecturePlayer, type PracticeCardItem } from "../practice/LecturePlayer";
 import { LectureEditView } from "./LectureEditView";
 
@@ -37,6 +37,26 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
 
   const [openMenuLectureId, setOpenMenuLectureId] = useState<string | null>(null);
   const [renamingLecture, setRenamingLecture] = useState<{ id: string; name: string } | null>(null);
+
+  // 講義内の全問題をオブジェクト配列（id, question, answer）としてクリップボードにコピー
+  const handleCopyQuestions = async (targetLectureId: string, targetLectureName: string) => {
+    const lectureCards = cards.filter((c) => c.lectureId === targetLectureId);
+    if (lectureCards.length === 0) {
+      alert(`講義「${targetLectureName}」には問題が登録されていません。`);
+      return;
+    }
+    const data = lectureCards.map((c) => ({
+      id: c.id,
+      question: c.front,
+      answer: c.back,
+    }));
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      alert(`📋 講義「${targetLectureName}」の全 ${data.length} 問をクリップボードにコピーしました！`);
+    } catch {
+      alert("クリップボードへのコピーに失敗しました。");
+    }
+  };
 
   // 問題が一問でもある講義のみを抽出（チェック・復習用）
   const courseLecturesWithCards = useMemo(
@@ -646,7 +666,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                             className="fixed inset-0 z-40"
                             onClick={() => setOpenMenuLectureId(null)}
                           />
-                          <div className="animate-fadeIn absolute top-8 right-0 z-50 w-36 rounded-xl border border-slate-700 bg-slate-900 py-1 text-xs text-slate-200 shadow-2xl">
+                          <div className="animate-fadeIn absolute top-8 right-0 z-50 w-40 rounded-xl border border-slate-700 bg-slate-900 py-1 text-xs text-slate-200 shadow-2xl">
                             <button
                               type="button"
                               onClick={() => {
@@ -657,6 +677,17 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                             >
                               <EditIcon size={14} className="text-slate-400" />
                               <span>名前の変更</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuLectureId(null);
+                                handleCopyQuestions(lecture.id, lecture.name);
+                              }}
+                              className="flex w-full cursor-pointer items-center space-x-2 px-3 py-2 text-left hover:bg-slate-800"
+                            >
+                              <ClipboardIcon size={14} className="text-slate-400" />
+                              <span>問題をコピー</span>
                             </button>
                             <button
                               type="button"

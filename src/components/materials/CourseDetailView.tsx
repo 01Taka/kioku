@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import { LectureSchema } from "../../types/schema";
-import { ArrowLeftIcon, EditIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
+import { ArrowLeftIcon, EditIcon, MoreVerticalIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
 import { LecturePlayer, type PracticeCardItem } from "../practice/LecturePlayer";
 import { LectureEditView } from "./LectureEditView";
 
@@ -20,6 +20,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     cards,
     settings,
     addLecture,
+    updateLecture,
     deleteLecture,
     getLectureTrainingQueue,
     answerLectureTrainingCard,
@@ -33,6 +34,9 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     () => lectures.filter((l) => l.courseId === courseId),
     [lectures, courseId],
   );
+
+  const [openMenuLectureId, setOpenMenuLectureId] = useState<string | null>(null);
+  const [renamingLecture, setRenamingLecture] = useState<{ id: string; name: string } | null>(null);
 
   // 問題が一問でもある講義のみを抽出（チェック・復習用）
   const courseLecturesWithCards = useMemo(
@@ -610,38 +614,67 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                   onClick={() => setEditingLectureId(lecture.id)}
                   className="group flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/80 p-3.5 transition hover:border-indigo-500/60"
                 >
-                  <div className="flex items-center space-x-2.5">
-                    <EditIcon
-                      size={15}
-                      className="text-slate-500 transition group-hover:text-indigo-400"
-                    />
-                    <div>
-                      <span className="text-xs font-bold text-white transition group-hover:text-indigo-300">
-                        {lecture.name}
-                      </span>
-                      <span className="ml-2 font-mono text-[11px] text-slate-500">
-                        ({cardCount} 枚)
-                      </span>
-                    </div>
+                  <div>
+                    <span className="text-xs font-bold text-white transition group-hover:text-indigo-300">
+                      {lecture.name}
+                    </span>
+                    <span className="ml-2 font-mono text-[11px] text-slate-500">
+                      ({cardCount} 枚)
+                    </span>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`講義「${lecture.name}」とカードを削除しますか？`)) {
-                          deleteLecture(lecture.id);
-                        }
-                      }}
-                      className="rounded p-1 text-slate-500 transition hover:bg-slate-800 hover:text-rose-400"
-                      title="講義を削除"
-                    >
-                      <TrashIcon size={13} />
-                    </button>
                     <span className="text-xs font-medium text-indigo-400 transition group-hover:translate-x-0.5">
                       編集 &gt;
                     </span>
+
+                    <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenMenuLectureId((prev) => (prev === lecture.id ? null : lecture.id))
+                        }
+                        className="cursor-pointer rounded-lg p-1 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+                        title="メニューを開く"
+                      >
+                        <MoreVerticalIcon size={16} />
+                      </button>
+
+                      {openMenuLectureId === lecture.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setOpenMenuLectureId(null)}
+                          />
+                          <div className="animate-fadeIn absolute top-8 right-0 z-50 w-36 rounded-xl border border-slate-700 bg-slate-900 py-1 text-xs text-slate-200 shadow-2xl">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuLectureId(null);
+                                setRenamingLecture({ id: lecture.id, name: lecture.name });
+                              }}
+                              className="flex w-full cursor-pointer items-center space-x-2 px-3 py-2 text-left hover:bg-slate-800"
+                            >
+                              <EditIcon size={14} className="text-slate-400" />
+                              <span>名前の変更</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuLectureId(null);
+                                if (window.confirm(`講義「${lecture.name}」とカードを削除しますか？`)) {
+                                  deleteLecture(lecture.id);
+                                }
+                              }}
+                              className="flex w-full cursor-pointer items-center space-x-2 px-3 py-2 text-left text-rose-400 hover:bg-slate-800 hover:text-rose-300"
+                            >
+                              <TrashIcon size={14} />
+                              <span>削除</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -686,6 +719,55 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
           }}
           onClose={() => setPracticeSession(null)}
         />
+      )}
+      {/* 講義名前変更モーダル */}
+      {renamingLecture && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+          onClick={() => setRenamingLecture(null)}
+        >
+          <div
+            className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-bold text-white">講義名の変更</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!renamingLecture.name.trim()) return;
+                updateLecture(renamingLecture.id, { name: renamingLecture.name.trim() });
+                setRenamingLecture(null);
+              }}
+              className="space-y-4"
+            >
+              <input
+                type="text"
+                value={renamingLecture.name}
+                onChange={(e) =>
+                  setRenamingLecture({ ...renamingLecture, name: e.target.value })
+                }
+                autoFocus
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-indigo-500"
+              />
+              <div className="flex justify-end space-x-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRenamingLecture(null)}
+                  className="cursor-pointer rounded-lg px-3 py-2 font-medium text-slate-400 hover:text-white"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={!renamingLecture.name.trim()}
+                  className="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  保存
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../store/useAppStore";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
-import { CheckIcon, SparklesIcon, XIcon } from "./icons";
+import { CheckIcon, ClipboardIcon, SparklesIcon, XIcon } from "./icons";
 
-// AlertTriangleIcon がなければ作成
 function WarningIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg
@@ -45,12 +44,51 @@ export function AiBatchImportModal({
   const { addCardsBatch, isDuplicateOfLastBatch } = useAppStore();
 
   const [rawText, setRawText] = useState(initialText);
+  const [clipboardError, setClipboardError] = useState<string | null>(null);
+  const [isReadingClipboard, setIsReadingClipboard] = useState(false);
+
   const [customBundleId, setCustomBundleId] = useState(() => {
     const d = new Date();
     const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
     const rand = Math.random().toString(36).substring(2, 6);
     return `ai_${dateStr}_${rand}`;
   });
+
+  // クリップボードからの読み取り処理
+  const readFromClipboard = async () => {
+    setClipboardError(null);
+    setIsReadingClipboard(true);
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        setClipboardError("クリップボードが空です。AIの出力テキストをコピーしてから再度お試しください。");
+      } else {
+        setRawText(text.trim());
+      }
+    } catch {
+      setClipboardError(
+        "クリップボードの読み取りに失敗しました。ブラウザのクリップボードへのアクセス許可をご確認ください。",
+      );
+    } finally {
+      setIsReadingClipboard(false);
+    }
+  };
+
+  // 初回表示時、initialTextが空ならクリップボードからの自動読み込みを試みる
+  useEffect(() => {
+    if (!initialText && navigator.clipboard?.readText) {
+      navigator.clipboard
+        .readText()
+        .then((text) => {
+          if (text && text.trim()) {
+            setRawText(text.trim());
+          }
+        })
+        .catch(() => {
+          // 初回自動取得拒否時はエラー表示せず、手動ボタンを押してもらう
+        });
+    }
+  }, [initialText]);
 
   // リアルタイムパース
   const parseResult = useMemo(() => {
@@ -83,36 +121,6 @@ export function AiBatchImportModal({
     onClose();
   };
 
-  const handleInsertSample = () => {
-    setRawText(`[
-  {
-    "question": "オームの法則の公式は？",
-    "answer": "V = R · I (電圧 = 抵抗 × 電流)"
-  },
-  {
-    "question": "キルヒホッフ第1法則（電流則 KCL）の内容は？",
-    "answer": "任意の節点に流入する電流の和は流出する電流の和に等しい（ΣI = 0）"
-  },
-  {
-    "question": "インダクタンス L の単位とその記号は？",
-    "answer": "ヘンリー [H]"
-  }
-]`);
-  };
-
-  const handleInsertBrokenSample = () => {
-    setRawText(`// AIがハルシネーションで括弧やカンマを崩した例
-{
-  "question": "コンデンサの静電容量 C の定義式は？",
-  "answer": "Q = C · V (電荷 = 静電容量 × 電圧)"
-}
-{
-  "question": "交流回路におけるリアクタンスとは？",
-  "answer": "インダクタやコンデンサが交流電流の流れを妨げる抵抗成分（単位: Ω）"
-}} // 括弧が余計
-`);
-  };
-
   return (
     <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
@@ -133,7 +141,7 @@ export function AiBatchImportModal({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-white"
           >
             <XIcon size={18} />
           </button>
@@ -141,73 +149,55 @@ export function AiBatchImportModal({
 
         {/* モーダル本文 */}
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          {/* 説明 & サンプル挿入 */}
-          <div className="flex flex-col justify-between gap-2 rounded-xl border border-slate-800/80 bg-slate-950/60 p-3 text-xs sm:flex-row sm:items-center">
-            <div className="text-slate-300">
-              <code>FlashcardContent[]</code>（<code>question</code> と <code>answer</code>
-              ）のJSONを貼り付けてください。
-              <div className="mt-0.5 text-[11px] text-slate-400">
-                ※ AIが中括弧 <code>{"{}"}</code> やカンマを誤っても、<code>question</code> と{" "}
-                <code>answer</code> が交互に並んでいれば自動補正して読み込みます。
-              </div>
-            </div>
-            <div className="flex flex-shrink-0 items-center space-x-2">
-              <button
-                type="button"
-                onClick={handleInsertSample}
-                className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-slate-300 transition hover:bg-slate-700"
-              >
-                標準サンプル
-              </button>
-              <button
-                type="button"
-                onClick={handleInsertBrokenSample}
-                className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-[11px] text-amber-300 transition hover:bg-slate-700"
-                title="ハルシネーションで括弧が崩れたサンプルの動作を試す"
-              >
-                破損JSONサンプル
-              </button>
-            </div>
-          </div>
+          {/* クリップボード読み取りボタン領域 */}
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-indigo-500/40 bg-slate-950/60 p-6 text-center">
+            <button
+              type="button"
+              onClick={readFromClipboard}
+              disabled={isReadingClipboard}
+              className="flex cursor-pointer items-center space-x-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 disabled:opacity-50"
+            >
+              <ClipboardIcon size={18} />
+              <span>
+                {rawText
+                  ? "📋 クリップボードから再取り込み"
+                  : "📋 クリップボードの内容を自動で取り込む"}
+              </span>
+            </button>
+            <p className="mt-2.5 text-xs text-slate-400">
+              AIに出力させたカードリスト（JSON）をコピーした状態で上のボタンを押してください。
+            </p>
 
-          {/* テキスト入力エリア */}
-          <div>
-            <div className="mb-1.5 flex items-center justify-between text-xs">
-              <label className="font-semibold text-slate-300">AIの出力テキスト</label>
-              {rawText && (
+            {rawText && (
+              <div className="mt-3 flex items-center space-x-3 text-xs">
+                <span className="text-slate-400">
+                  取り込みデータ: <strong className="text-indigo-300">{rawText.length}</strong> 文字
+                </span>
+                <span className="text-slate-600">|</span>
                 <button
                   type="button"
-                  onClick={() => setRawText("")}
-                  className="text-[11px] text-slate-500 hover:text-rose-400"
+                  onClick={() => {
+                    setRawText("");
+                    setClipboardError(null);
+                  }}
+                  className="cursor-pointer text-slate-500 transition hover:text-rose-400"
                 >
                   クリア
                 </button>
-              )}
-            </div>
-            <textarea
-              rows={7}
-              value={rawText}
-              onChange={(e) => setRawText(e.target.value)}
-              placeholder={`[\n  {\n    "question": "ここに問題文",\n    "answer": "ここに解答文"\n  }\n]`}
-              className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 font-mono text-base text-slate-100 transition focus:border-indigo-500 focus:outline-none"
-            />
+              </div>
+            )}
           </div>
 
-          {/* バンドルID設定 */}
-          <div className="flex flex-col justify-between gap-2 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3 text-xs sm:flex-row sm:items-center">
-            <div>
-              <span className="font-semibold text-slate-300">一括管理ID (bundleId):</span>
-              <p className="text-[11px] text-slate-400">
-                このバッチで追加される全カードに付与されます。後から一括取り消し・削除が可能です。
-              </p>
+          {/* クリップボード読み取りエラー */}
+          {clipboardError && (
+            <div className="animate-fadeIn flex items-start space-x-2.5 rounded-xl border border-rose-800/80 bg-rose-950/60 p-3 text-xs text-rose-300">
+              <WarningIcon size={16} className="mt-0.5 flex-shrink-0 text-rose-400" />
+              <div>
+                <div className="font-semibold text-rose-200">読み取りエラー</div>
+                <p className="mt-0.5 text-[11px] text-rose-300/90">{clipboardError}</p>
+              </div>
             </div>
-            <input
-              type="text"
-              value={customBundleId}
-              onChange={(e) => setCustomBundleId(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 font-mono text-base text-indigo-300 focus:border-indigo-500 focus:outline-none sm:w-52"
-            />
-          </div>
+          )}
 
           {/* パース結果インジケータ */}
           {parseResult && (
@@ -223,7 +213,7 @@ export function AiBatchImportModal({
                           ⚠️ 直前に追加した一括カードと全く同じ内容です
                         </div>
                         <p className="mt-0.5 text-[11px] text-amber-300/80">
-                          二重追加を防止するため、このまま追加することはできません。内容を編集するか、別の出力を指定してください。
+                          二重追加を防止するため、このまま追加することはできません。別の出力をコピーして再度お試しください。
                         </p>
                       </div>
                     </div>
@@ -233,7 +223,7 @@ export function AiBatchImportModal({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 font-semibold text-emerald-300">
                         <CheckIcon size={16} />
-                        <span>{parseResult.cards.length} 件のカードを正常に認識しました</span>
+                        <span>{parseResult.cards.length} 件のカードを認識しました</span>
                       </div>
                       <span className="rounded-full border border-emerald-700/60 bg-emerald-900/60 px-2 py-0.5 text-[10px] text-emerald-200">
                         {parseResult.source === "JSON"
@@ -243,7 +233,7 @@ export function AiBatchImportModal({
                     </div>
 
                     {/* プレビュー一覧 */}
-                    <div className="max-h-52 space-y-2 overflow-y-auto pt-1 pr-1">
+                    <div className="max-h-56 space-y-2 overflow-y-auto pt-1 pr-1">
                       {parseResult.cards.map((card, idx) => (
                         <div
                           key={idx}
@@ -271,7 +261,7 @@ export function AiBatchImportModal({
                   <WarningIcon size={16} className="mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="mb-0.5 font-semibold text-rose-200">
-                      カードを読み込めませんでした
+                      カードを認識できませんでした
                     </div>
                     <p className="text-[11px] leading-relaxed text-rose-300/90">
                       {parseResult.errorMessage}
@@ -281,6 +271,22 @@ export function AiBatchImportModal({
               )}
             </div>
           )}
+
+          {/* バンドルID設定 */}
+          <div className="flex flex-col justify-between gap-2 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3 text-xs sm:flex-row sm:items-center">
+            <div>
+              <span className="font-semibold text-slate-300">一括管理ID (bundleId):</span>
+              <p className="text-[11px] text-slate-400">
+                このバッチで追加される全カードに付与されます。後から一括取り消し・削除が可能です。
+              </p>
+            </div>
+            <input
+              type="text"
+              value={customBundleId}
+              onChange={(e) => setCustomBundleId(e.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 font-mono text-base text-indigo-300 focus:border-indigo-500 focus:outline-none sm:w-52"
+            />
+          </div>
         </div>
 
         {/* モーダルフッター */}
@@ -288,7 +294,7 @@ export function AiBatchImportModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-2 text-xs text-slate-400 transition hover:text-white"
+            className="cursor-pointer px-3.5 py-2 text-xs text-slate-400 transition hover:text-white"
           >
             キャンセル
           </button>

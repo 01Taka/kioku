@@ -657,16 +657,11 @@ export function LecturePlayer({
       {/* 演習ヘッダー */}
       <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
         <div className="flex items-center space-x-3">
-          <span
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
-              mode === "TRAINING"
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                : "border-indigo-500/20 bg-indigo-500/10 text-indigo-400"
-            }`}
-          >
-            {headerBadgeText ??
-              (mode === "TRAINING" ? "✅ チェックモード (優先度: 3 > 2 > 1)" : "🔁 全問モード")}
-          </span>
+          {headerBadgeText && (
+            <span className="rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-1 text-xs font-medium text-indigo-400">
+              {headerBadgeText}
+            </span>
+          )}
           <h2 className="max-w-xs truncate text-sm font-bold text-white sm:max-w-md">
             {lectureTitle}
           </h2>

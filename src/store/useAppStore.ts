@@ -140,7 +140,8 @@ interface AppState {
     lectureId: string,
     contents: FlashcardContent[],
     customBundleId?: string,
-  ) => { bundleId: string; addedCards: Card[] };
+    overwriteMode?: "KEEP_STATE" | "RESET_STATE",
+  ) => { bundleId: string; addedCards: Card[]; updatedCount: number };
   deleteCardsByBundleId: (bundleId: string) => number;
   isDuplicateOfLastBatch: (lectureId: string, contents: FlashcardContent[]) => boolean;
 
@@ -692,7 +693,7 @@ export const useAppStore = create<AppState>()(
         };
       },
 
-      addCardsBatch: (courseId, lectureId, contents, customBundleId) => {
+      addCardsBatch: (courseId, lectureId, contents, customBundleId, overwriteMode = "KEEP_STATE") => {
         // Zod スキーマでカード内容を厳格バリデーション
         const parsedContents = contents
           .map((c) => FlashcardContentSchema.safeParse(c))
@@ -703,26 +704,68 @@ export const useAppStore = create<AppState>()(
           return {
             bundleId: "",
             addedCards: [],
+            updatedCount: 0,
           };
         }
 
         const bundleId =
           customBundleId || `bundle_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        const newCards: Card[] = parsedContents.map((c) =>
-          createNewCard({
-            id: `card_${generateId()}`,
-            courseId,
-            lectureId,
-            front: c.question,
-            back: c.answer,
-            bundleId,
-          }),
+        const now = new Date().toISOString();
+
+        const currentCards = get().cards;
+        const currentLectureCardsMap = new Map(
+          currentCards.filter((c) => c.lectureId === lectureId).map((c) => [c.id, c]),
         );
+
+        const newCards: Card[] = [];
+        const updatedCardsMap = new Map<string, Card>();
+
+        for (const item of parsedContents) {
+          if (item.id && currentLectureCardsMap.has(item.id)) {
+            // 上書き対象！
+            const existing = currentLectureCardsMap.get(item.id)!;
+            let updatedCard: Card;
+            if (overwriteMode === "RESET_STATE") {
+              const reset = resetCardToUnattempted(existing);
+              updatedCard = {
+                ...reset,
+                front: item.question,
+                back: item.answer,
+                bundleId,
+                updatedAt: now,
+              };
+            } else {
+              // KEEP_STATE: 状態はそのままに問題と解答だけ上書き
+              updatedCard = {
+                ...existing,
+                front: item.question,
+                back: item.answer,
+                bundleId,
+                updatedAt: now,
+              };
+            }
+            updatedCardsMap.set(item.id, updatedCard);
+          } else {
+            // 新規追加！ (idがない、または一致するidが存在しない場合は新しいidを採番)
+            const newCard = createNewCard({
+              id: `card_${generateId()}`,
+              courseId,
+              lectureId,
+              front: item.question,
+              back: item.answer,
+              bundleId,
+            });
+            newCards.push(newCard);
+          }
+        }
+
+        const nextCards = currentCards.map((c) => updatedCardsMap.get(c.id) ?? c);
+        const finalCards = [...newCards, ...nextCards];
 
         const signature = getBatchSignature(parsedContents);
 
-        set((state) => ({
-          cards: [...newCards, ...state.cards],
+        set(() => ({
+          cards: finalCards,
           lastImportBatch: {
             lectureId,
             signature,
@@ -734,6 +777,7 @@ export const useAppStore = create<AppState>()(
         return {
           bundleId,
           addedCards: newCards,
+          updatedCount: updatedCardsMap.size,
         };
       },
 

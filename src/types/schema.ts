@@ -59,6 +59,7 @@ export type ActiveRating = z.infer<typeof ActiveRatingSchema>;
 
 /** AI生成フラッシュカードの入力フォーマット */
 export const FlashcardContentSchema = z.object({
+  id: z.string().optional(),
   question: z.string().trim().min(1, "問題文を入力してください"),
   answer: z.string().trim().min(1, "解答文を入力してください"),
 });

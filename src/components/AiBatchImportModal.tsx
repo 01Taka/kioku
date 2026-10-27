@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useAppStore } from "../store/useAppStore";
+import type { Card } from "../types/schema";
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
 import { CheckIcon, ClipboardIcon, SparklesIcon, XIcon } from "./icons";
 
@@ -41,11 +42,12 @@ export function AiBatchImportModal({
   onClose,
   onSuccess,
 }: AiBatchImportModalProps) {
-  const { addCardsBatch, isDuplicateOfLastBatch } = useAppStore();
+  const { cards, addCardsBatch, isDuplicateOfLastBatch } = useAppStore();
 
   const [rawText, setRawText] = useState(initialText);
   const [clipboardError, setClipboardError] = useState<string | null>(null);
   const [isReadingClipboard, setIsReadingClipboard] = useState(false);
+  const [isSaveMenuOpen, setIsSaveMenuOpen] = useState(false);
 
   const [customBundleId, setCustomBundleId] = useState(() => {
     const d = new Date();
@@ -96,6 +98,42 @@ export function AiBatchImportModal({
     return parseFlashcardsFromAI(rawText);
   }, [rawText]);
 
+  // 対象講義の既存カードマップ
+  const lectureCardsMap = useMemo(() => {
+    return new Map<string, Card>(
+      cards.filter((c) => c.lectureId === lectureId).map((c) => [c.id, c]),
+    );
+  }, [cards, lectureId]);
+
+  // 各カードのID照合状態の分析
+  const cardIdAnalysis = useMemo(() => {
+    if (!parseResult || !parseResult.success) {
+      return { validCount: 0, missingCount: 0, newCount: 0, items: [] };
+    }
+    let validCount = 0;
+    let missingCount = 0;
+    let newCount = 0;
+
+    const items = parseResult.cards.map((c) => {
+      if (!c.id) {
+        newCount++;
+        return { card: c, status: "NEW" as const };
+      }
+      if (lectureCardsMap.has(c.id)) {
+        validCount++;
+        return {
+          card: c,
+          status: "EXISTING_OVERWRITE" as const,
+          existingCard: lectureCardsMap.get(c.id),
+        };
+      }
+      missingCount++;
+      return { card: c, status: "ID_NOT_FOUND" as const };
+    });
+
+    return { validCount, missingCount, newCount, items };
+  }, [parseResult, lectureCardsMap]);
+
   // 直前追加分との完全重複チェック
   const isDuplicate = useMemo(() => {
     if (!parseResult || !parseResult.success || parseResult.cards.length === 0) {
@@ -104,7 +142,7 @@ export function AiBatchImportModal({
     return isDuplicateOfLastBatch(lectureId, parseResult.cards);
   }, [parseResult, isDuplicateOfLastBatch, lectureId]);
 
-  const handleImport = () => {
+  const handleImport = (overwriteMode: "KEEP_STATE" | "RESET_STATE" = "KEEP_STATE") => {
     if (!parseResult || !parseResult.success || parseResult.cards.length === 0) return;
 
     if (isDuplicate) {
@@ -115,10 +153,29 @@ export function AiBatchImportModal({
     }
 
     const bundleId = customBundleId.trim() || undefined;
-    const result = addCardsBatch(courseId, lectureId, parseResult.cards, bundleId);
+    const result = addCardsBatch(
+      courseId,
+      lectureId,
+      parseResult.cards,
+      bundleId,
+      overwriteMode,
+    );
 
-    onSuccess(result.bundleId, result.addedCards.length);
+    const totalProcessed = result.addedCards.length + result.updatedCount;
+    onSuccess(result.bundleId, totalProcessed);
     onClose();
+  };
+
+  const handleSaveButtonClick = () => {
+    if (!parseResult?.success || parseResult.cards.length === 0) return;
+
+    // 正常な既存IDが1問でも存在すればドロップダウンを表示
+    if (cardIdAnalysis.validCount > 0) {
+      setIsSaveMenuOpen((prev) => !prev);
+    } else {
+      // 全て新規追加の場合は直接取り込み
+      handleImport("KEEP_STATE");
+    }
   };
 
   return (
@@ -179,6 +236,7 @@ export function AiBatchImportModal({
                   onClick={() => {
                     setRawText("");
                     setClipboardError(null);
+                    setIsSaveMenuOpen(false);
                   }}
                   className="cursor-pointer text-slate-500 transition hover:text-rose-400"
                 >
@@ -219,37 +277,88 @@ export function AiBatchImportModal({
                     </div>
                   )}
 
+                  {/* ID不一致の警告バナー */}
+                  {cardIdAnalysis.missingCount > 0 && (
+                    <div className="animate-fadeIn flex items-start space-x-2.5 rounded-xl border border-amber-800/80 bg-amber-950/60 p-3 text-xs text-amber-200">
+                      <WarningIcon size={16} className="mt-0.5 flex-shrink-0 text-amber-400" />
+                      <div>
+                        <div className="font-semibold text-amber-300">
+                          ⚠️ 存在しないIDが指定されている問題があります（{cardIdAnalysis.missingCount} 件）
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-amber-300/80">
+                          この講義の既存カードに一致しないIDは無視され、新規カードとして新しいIDが自動採番されます。
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2 rounded-xl border border-emerald-800/60 bg-emerald-950/40 p-3 text-xs">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center space-x-2 font-semibold text-emerald-300">
                         <CheckIcon size={16} />
                         <span>{parseResult.cards.length} 件のカードを認識しました</span>
                       </div>
-                      <span className="rounded-full border border-emerald-700/60 bg-emerald-900/60 px-2 py-0.5 text-[10px] text-emerald-200">
-                        {parseResult.source === "JSON"
-                          ? "標準JSON形式"
-                          : "ハルシネーション耐性スキャナー（自動復元）"}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                        {cardIdAnalysis.validCount > 0 && (
+                          <span className="rounded-full border border-indigo-500/50 bg-indigo-900/60 px-2 py-0.5 text-indigo-200">
+                            🔄 上書き対象: {cardIdAnalysis.validCount} 件
+                          </span>
+                        )}
+                        {cardIdAnalysis.newCount > 0 && (
+                          <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-slate-300">
+                            ✨ 新規: {cardIdAnalysis.newCount} 件
+                          </span>
+                        )}
+                        {cardIdAnalysis.missingCount > 0 && (
+                          <span className="rounded-full border border-amber-700/60 bg-amber-900/60 px-2 py-0.5 text-amber-200">
+                            ⚠️ 新規(ID無視): {cardIdAnalysis.missingCount} 件
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* プレビュー一覧 */}
                     <div className="max-h-56 space-y-2 overflow-y-auto pt-1 pr-1">
-                      {parseResult.cards.map((card, idx) => (
+                      {cardIdAnalysis.items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="grid grid-cols-1 gap-2 rounded-lg border border-slate-800 bg-slate-900/90 p-2.5 text-xs md:grid-cols-2"
+                          className="rounded-lg border border-slate-800 bg-slate-900/90 p-2.5 text-xs"
                         >
-                          <div>
-                            <span className="mb-0.5 block text-[10px] font-semibold text-indigo-400">
-                              Q{idx + 1}:
-                            </span>
-                            <p className="whitespace-pre-wrap text-slate-100">{card.question}</p>
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="font-mono text-[10px] text-slate-500">#{idx + 1}</span>
+                            <div>
+                              {item.status === "EXISTING_OVERWRITE" && (
+                                <span className="rounded border border-indigo-500/40 bg-indigo-950/80 px-1.5 py-0.5 text-[10px] font-medium text-indigo-300">
+                                  🔄 既存カード上書き (ID: {item.card.id})
+                                </span>
+                              )}
+                              {item.status === "ID_NOT_FOUND" && (
+                                <span className="rounded border border-amber-500/40 bg-amber-950/80 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                                  ⚠️ ID不一致・新ID採番 (元ID: {item.card.id})
+                                </span>
+                              )}
+                              {item.status === "NEW" && (
+                                <span className="rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                  ✨ 新規追加
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <span className="mb-0.5 block text-[10px] font-semibold text-emerald-400">
-                              A{idx + 1}:
-                            </span>
-                            <p className="whitespace-pre-wrap text-slate-200">{card.answer}</p>
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <div>
+                              <span className="mb-0.5 block text-[10px] font-semibold text-indigo-400">
+                                問題:
+                              </span>
+                              <p className="whitespace-pre-wrap text-slate-100">
+                                {item.card.question}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="mb-0.5 block text-[10px] font-semibold text-emerald-400">
+                                解答:
+                              </span>
+                              <p className="whitespace-pre-wrap text-slate-200">{item.card.answer}</p>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -290,7 +399,7 @@ export function AiBatchImportModal({
         </div>
 
         {/* モーダルフッター */}
-        <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900/90 p-4 sm:p-5">
+        <div className="relative flex items-center justify-between border-t border-slate-800 bg-slate-900/90 p-4 sm:p-5">
           <button
             type="button"
             onClick={onClose}
@@ -298,26 +407,81 @@ export function AiBatchImportModal({
           >
             キャンセル
           </button>
-          <button
-            type="button"
-            onClick={handleImport}
-            disabled={!parseResult?.success || parseResult.cards.length === 0}
-            className={`flex cursor-pointer items-center space-x-2 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-lg transition ${
-              isDuplicate
-                ? "bg-amber-700/80 text-amber-100 shadow-amber-700/30 hover:bg-amber-600"
-                : "bg-indigo-600 shadow-indigo-600/30 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
-            }`}
-            title={isDuplicate ? "直前に追加した内容と同一のため追加できません" : undefined}
-          >
-            <SparklesIcon size={15} />
-            <span>
-              {isDuplicate
-                ? "同一内容のため追加不可"
-                : parseResult?.success && parseResult.cards.length > 0
-                  ? `${parseResult.cards.length} 件を一括追加`
-                  : "一括追加"}
-            </span>
-          </button>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleSaveButtonClick}
+              disabled={!parseResult?.success || parseResult.cards.length === 0}
+              className={`flex cursor-pointer items-center space-x-2 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-lg transition ${
+                isDuplicate
+                  ? "bg-amber-700/80 text-amber-100 shadow-amber-700/30 hover:bg-amber-600"
+                  : "bg-indigo-600 shadow-indigo-600/30 hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              }`}
+              title={isDuplicate ? "直前に追加した内容と同一のため追加できません" : undefined}
+            >
+              <SparklesIcon size={15} />
+              <span>
+                {isDuplicate
+                  ? "同一内容のため追加不可"
+                  : cardIdAnalysis.validCount > 0
+                    ? `保存・上書きの選択 (${parseResult?.cards.length} 件) ▼`
+                    : parseResult?.success && parseResult.cards.length > 0
+                      ? `${parseResult.cards.length} 件を一括追加`
+                      : "一括追加"}
+              </span>
+            </button>
+
+            {/* 既存IDを含む場合の上書きモード選択ドロップダウン */}
+            {isSaveMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsSaveMenuOpen(false)}
+                />
+                <div className="animate-fadeIn absolute right-0 bottom-full z-50 mb-2 w-80 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-200 shadow-2xl">
+                  <div className="border-b border-slate-800 px-3 py-2">
+                    <span className="font-bold text-white">上書き方法を選択</span>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      一致する既存カード（{cardIdAnalysis.validCount} 件）の取り込み方を選択してください。
+                    </p>
+                  </div>
+                  <div className="space-y-1 p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSaveMenuOpen(false);
+                        handleImport("KEEP_STATE");
+                      }}
+                      className="flex w-full cursor-pointer flex-col rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-800"
+                    >
+                      <span className="font-semibold text-indigo-300">
+                        🔄 状態をそのままに問題と解答だけを上書き
+                      </span>
+                      <span className="mt-0.5 text-[11px] text-slate-400">
+                        学習進捗・連続正解数・期日を維持したまま、問題文と解答文のみを更新します。
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSaveMenuOpen(false);
+                        handleImport("RESET_STATE");
+                      }}
+                      className="flex w-full cursor-pointer flex-col rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-800"
+                    >
+                      <span className="font-semibold text-amber-300">
+                        ⚡ 状態をリセットして取り込む
+                      </span>
+                      <span className="mt-0.5 text-[11px] text-slate-400">
+                        上書きするカードの学習進捗を未実施（初期状態）に初期化して取り込みます。
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

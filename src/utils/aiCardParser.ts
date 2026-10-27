@@ -54,28 +54,29 @@ export function parseFlashcardsFromAI(rawInput: string): ParseResult {
 }
 
 interface KeyToken {
-  type: "question" | "answer";
+  type: "id" | "question" | "answer";
   value: string;
   index: number;
 }
 
 /**
- * 正規表現を用いてテキスト全体から question / answer トークンを抽出し、
+ * 正規表現を用いてテキスト全体から id / question / answer トークンを抽出し、
  * 交互性（question → answer → question → answer ...）を厳格に検証する
  */
 function scanAlternatingKeyValuePairs(text: string): ParseResult {
   // マッチ対象:
+  // "id": "..." / '...' または id: "..." / '...'
   // "question": "..." / '...' または question: "..." / '...'
   // "answer": "..." / '...' または answer: "..." / '...'
   // クォート内のエスケープ（\" や \' など）および複数行を許容
   const tokenRegex =
-    /(?:"?(question|answer)"?\s*:\s*)(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)')/gi;
+    /(?:"?(id|question|answer)"?\s*:\s*)(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)')/gi;
 
   const tokens: KeyToken[] = [];
   let match: RegExpExecArray | null;
 
   while ((match = tokenRegex.exec(text)) !== null) {
-    const keyType = match[1].toLowerCase() as "question" | "answer";
+    const keyType = match[1].toLowerCase() as "id" | "question" | "answer";
     const rawVal = match[2] !== undefined ? match[2] : match[3];
     const unescapedVal = unescapeJsonString(rawVal);
 
@@ -86,7 +87,10 @@ function scanAlternatingKeyValuePairs(text: string): ParseResult {
     });
   }
 
-  if (tokens.length === 0) {
+  // question と answer のペアを検出（id はオプショナルで近傍のものをバインド）
+  const qaTokens = tokens.filter((t) => t.type === "question" || t.type === "answer");
+
+  if (qaTokens.length === 0) {
     return {
       success: false,
       cards: [],
@@ -97,7 +101,7 @@ function scanAlternatingKeyValuePairs(text: string): ParseResult {
   }
 
   // 1. 最初の項目が question かどうか
-  if (tokens[0].type !== "question") {
+  if (qaTokens[0].type !== "question") {
     return {
       success: false,
       cards: [],
@@ -109,9 +113,9 @@ function scanAlternatingKeyValuePairs(text: string): ParseResult {
 
   // 2. 交互性チェック（i%2 === 0 が question, i%2 === 1 が answer）
   const cards: FlashcardContent[] = [];
-  for (let i = 0; i < tokens.length; i++) {
+  for (let i = 0; i < qaTokens.length; i++) {
     const expectedType = i % 2 === 0 ? "question" : "answer";
-    const currentToken = tokens[i];
+    const currentToken = qaTokens[i];
 
     if (currentToken.type !== expectedType) {
       const pairIndex = Math.floor(i / 2) + 1;
@@ -124,8 +128,17 @@ function scanAlternatingKeyValuePairs(text: string): ParseResult {
     }
 
     if (expectedType === "answer") {
-      const prevQuestionToken = tokens[i - 1];
+      const prevQuestionToken = qaTokens[i - 1];
+      // このQ&Aペアの近傍にある id トークンを探す
+      const prevAnswerIdx = i >= 2 ? qaTokens[i - 2].index : -1;
+      const nextQuestionIdx = i + 1 < qaTokens.length ? qaTokens[i + 1].index : Infinity;
+
+      const associatedId = tokens.find(
+        (t) => t.type === "id" && t.index > prevAnswerIdx && t.index < nextQuestionIdx,
+      )?.value;
+
       cards.push({
+        id: associatedId || undefined,
         question: prevQuestionToken.value,
         answer: currentToken.value,
       });
@@ -133,8 +146,8 @@ function scanAlternatingKeyValuePairs(text: string): ParseResult {
   }
 
   // 3. 最後の要素が question で終わっている（奇数個）かチェック
-  if (tokens.length % 2 !== 0) {
-    const incompleteIndex = Math.floor(tokens.length / 2) + 1;
+  if (qaTokens.length % 2 !== 0) {
+    const incompleteIndex = Math.floor(qaTokens.length / 2) + 1;
     return {
       success: false,
       cards: [],

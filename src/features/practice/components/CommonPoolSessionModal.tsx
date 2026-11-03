@@ -22,15 +22,24 @@ export function CommonPoolSessionModal({
 }: CommonPoolSessionModalProps) {
   const { getCommonPoolQueue, answerCommonPoolCard, batchDemoteToLecturePool } = useAppStore();
 
-  // セッション開始時点の10問バッチスナップショット
-  const [batchItems, setBatchItems] = useState<CommonPoolQueueItem[]>([]);
+  // セッション全体の全カードリスト（リザルト画面を閉じるか次のバッチまで不変）
+  const [sessionItems, setSessionItems] = useState<CommonPoolQueueItem[]>([]);
+  // 現在解いているカードリスト（初回はsessionItems、復習時は間違い問題のみ）
+  const [activeItems, setActiveItems] = useState<CommonPoolQueueItem[]>([]);
   const [earlyCount, setEarlyCount] = useState(0);
   const [farthestEarlyDueIso, setFarthestEarlyDueIso] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isBreakScreen, setIsBreakScreen] = useState(false);
   const [slideState, setSlideState] = useState<SlideAnimationState>("idle");
-  const [batchAnswers, setBatchAnswers] = useState<Record<string, "GOOD" | "AGAIN">>({});
+
+  // 初回演習での各カードの回答
+  const [initialAnswers, setInitialAnswers] = useState<Record<string, "GOOD" | "AGAIN">>({});
+  // 復習演習での各カードの最新回答
+  const [reviewAnswers, setReviewAnswers] = useState<Record<string, "GOOD" | "AGAIN">>({});
+  // 復習モード中かどうかのフラグ
+  const [isReviewMode, setIsReviewMode] = useState(false);
+
   const [_sessionStats, setSessionStats] = useState({
     goodCount: 0,
     againCount: 0,
@@ -41,13 +50,16 @@ export function CommonPoolSessionModal({
 
   const loadNextBatch = useCallback(() => {
     const queueResult = getCommonPoolQueue();
-    setBatchItems(queueResult.sessionBatch);
+    setSessionItems(queueResult.sessionBatch);
+    setActiveItems(queueResult.sessionBatch);
     setEarlyCount(queueResult.earlyReviewCountInBatch);
     setFarthestEarlyDueIso(queueResult.farthestEarlyDueIso);
     setCurrentIndex(0);
     setIsFlipped(false);
     setIsBreakScreen(false);
-    setBatchAnswers({});
+    setInitialAnswers({});
+    setReviewAnswers({});
+    setIsReviewMode(false);
     setSlideState("idle");
   }, [getCommonPoolQueue]);
 
@@ -61,8 +73,8 @@ export function CommonPoolSessionModal({
     };
   }, [loadNextBatch]);
 
-  const totalInBatch = batchItems.length;
-  const currentItem = batchItems[currentIndex];
+  const totalInBatch = activeItems.length;
+  const currentItem = activeItems[currentIndex];
 
   const handleFlip = useCallback(() => {
     if (slideState !== "idle") return;
@@ -73,22 +85,36 @@ export function CommonPoolSessionModal({
     (rating: "AGAIN" | "GOOD") => {
       if (!currentItem || slideState !== "idle") return;
 
-      // FSRS 計算・当日回答記録・オレンジフラグ更新
-      answerCommonPoolCard(currentItem.card.id, rating);
-      setBatchAnswers((prev) => ({ ...prev, [currentItem.card.id]: rating }));
+      if (!isReviewMode) {
+        // --- 1. 初回チェック演習中 ---
+        // FSRS 計算・当日回答記録・オレンジフラグ更新
+        answerCommonPoolCard(currentItem.card.id, rating);
+        const nextInitial = { ...initialAnswers, [currentItem.card.id]: rating };
+        setInitialAnswers(nextInitial);
 
-      setSessionStats((prev) => ({
-        ...prev,
-        goodCount: rating === "GOOD" ? prev.goodCount + 1 : prev.goodCount,
-        againCount: rating === "AGAIN" ? prev.againCount + 1 : prev.againCount,
-        completedBatches:
-          currentIndex + 1 >= totalInBatch ? prev.completedBatches + 1 : prev.completedBatches,
-      }));
+        setSessionStats((prev) => ({
+          ...prev,
+          goodCount: rating === "GOOD" ? prev.goodCount + 1 : prev.goodCount,
+          againCount: rating === "AGAIN" ? prev.againCount + 1 : prev.againCount,
+          completedBatches:
+            currentIndex + 1 >= totalInBatch ? prev.completedBatches + 1 : prev.completedBatches,
+        }));
 
-      // 10問（または端数バッチ）終了ならブレイク画面へ
-      if (currentIndex + 1 >= totalInBatch) {
-        setIsBreakScreen(true);
-        return;
+        // 10問（または端数バッチ）終了ならブレイク画面へ
+        if (currentIndex + 1 >= totalInBatch) {
+          setIsBreakScreen(true);
+          return;
+        }
+      } else {
+        // --- 2. 間違えた問題の復習中 ---
+        const nextReview = { ...reviewAnswers, [currentItem.card.id]: rating };
+        setReviewAnswers(nextReview);
+
+        if (currentIndex + 1 >= totalInBatch) {
+          setIsReviewMode(false);
+          setIsBreakScreen(true);
+          return;
+        }
       }
 
       // スライドアウト ➔ 非表示中に表面へリセット ➔ 下からスライドイン
@@ -110,7 +136,16 @@ export function CommonPoolSessionModal({
         });
       }, 160);
     },
-    [currentItem, slideState, answerCommonPoolCard, currentIndex, totalInBatch],
+    [
+      currentItem,
+      slideState,
+      isReviewMode,
+      initialAnswers,
+      reviewAnswers,
+      answerCommonPoolCard,
+      currentIndex,
+      totalInBatch,
+    ],
   );
 
   // セッション中の即時降格アクション（この問題を今すぐ所属講義の未暗記プールへ戻す）
@@ -121,16 +156,27 @@ export function CommonPoolSessionModal({
 
       batchDemoteToLecturePool([currentItem.card.id]);
 
-      setSessionStats((prev) => ({
-        ...prev,
-        againCount: prev.againCount + 1,
-        completedBatches:
-          currentIndex + 1 >= totalInBatch ? prev.completedBatches + 1 : prev.completedBatches,
-      }));
+      if (!isReviewMode) {
+        setInitialAnswers((prev) => ({ ...prev, [currentItem.card.id]: "AGAIN" }));
+        setSessionStats((prev) => ({
+          ...prev,
+          againCount: prev.againCount + 1,
+          completedBatches:
+            currentIndex + 1 >= totalInBatch ? prev.completedBatches + 1 : prev.completedBatches,
+        }));
 
-      if (currentIndex + 1 >= totalInBatch) {
-        setIsBreakScreen(true);
-        return;
+        if (currentIndex + 1 >= totalInBatch) {
+          setIsBreakScreen(true);
+          return;
+        }
+      } else {
+        setReviewAnswers((prev) => ({ ...prev, [currentItem.card.id]: "AGAIN" }));
+
+        if (currentIndex + 1 >= totalInBatch) {
+          setIsReviewMode(false);
+          setIsBreakScreen(true);
+          return;
+        }
       }
 
       setSlideState("slide-out-up");
@@ -151,7 +197,14 @@ export function CommonPoolSessionModal({
         });
       }, 160);
     },
-    [currentItem, slideState, batchDemoteToLecturePool, currentIndex, totalInBatch],
+    [
+      currentItem,
+      slideState,
+      isReviewMode,
+      batchDemoteToLecturePool,
+      currentIndex,
+      totalInBatch,
+    ],
   );
 
   // キーボード操作対応
@@ -216,7 +269,7 @@ export function CommonPoolSessionModal({
   };
 
   // 出題対象カードが0枚の場合
-  if (totalInBatch === 0 && !isBreakScreen) {
+  if (sessionItems.length === 0 && !isBreakScreen) {
     return (
       <div className="animate-fadeIn fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-md">
         <div className="w-full max-w-md space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center shadow-2xl">
@@ -245,10 +298,20 @@ export function CommonPoolSessionModal({
     const nextQueuePreview = getCommonPoolQueue();
     const nextAvailableCount = nextQueuePreview.sessionBatch.length;
 
-    const incorrectItems = batchItems.filter((i) => batchAnswers[i.card.id] === "AGAIN");
-    const correctItems = batchItems.filter((i) => batchAnswers[i.card.id] === "GOOD");
+    // 1. わからなかった（初回不正解かつ復習未正解）
+    const unresolvedItems = sessionItems.filter(
+      (item) => initialAnswers[item.card.id] === "AGAIN" && reviewAnswers[item.card.id] !== "GOOD",
+    );
+    // 3. 復習完了（初回不正解だったが復習で正解）
+    const reviewedItems = sessionItems.filter(
+      (item) => initialAnswers[item.card.id] === "AGAIN" && reviewAnswers[item.card.id] === "GOOD",
+    );
+    // 4. わかった（初回正解）
+    const passedItems = sessionItems.filter(
+      (item) => initialAnswers[item.card.id] === "GOOD",
+    );
 
-    const incorrectCards = incorrectItems.map((item) => ({
+    const mapToResultCard = (item: CommonPoolQueueItem) => ({
       id: item.card.id,
       front: item.card.front,
       back: item.card.back,
@@ -258,26 +321,18 @@ export function CommonPoolSessionModal({
           : item.reviewCategory === "DUE"
             ? "⭕ 本日期日"
             : "⏩ 先取り",
-    }));
+    });
 
-    const correctCards = correctItems.map((item) => ({
-      id: item.card.id,
-      front: item.card.front,
-      back: item.card.back,
-      badge:
-        item.reviewCategory === "RETRY"
-          ? "🔁 リトライ"
-          : item.reviewCategory === "DUE"
-            ? "⭕ 本日期日"
-            : "⏩ 先取り",
-    }));
+    const unresolvedCards = unresolvedItems.map(mapToResultCard);
+    const reviewedCards = reviewedItems.map(mapToResultCard);
+    const passedCards = passedItems.map(mapToResultCard);
 
     const handleReviewMistakes = () => {
-      if (incorrectItems.length === 0) return;
-      setBatchItems(incorrectItems);
+      if (unresolvedItems.length === 0) return;
+      setIsReviewMode(true);
+      setActiveItems(unresolvedItems);
       setCurrentIndex(0);
       setIsFlipped(false);
-      setBatchAnswers({});
       setIsBreakScreen(false);
       setSlideState("idle");
     };
@@ -285,10 +340,11 @@ export function CommonPoolSessionModal({
     return (
       <PracticeResultView
         title="本日の復習 (共通プール)"
-        totalCount={batchItems.length}
-        correctCount={correctCards.length}
-        incorrectCards={incorrectCards}
-        correctCards={correctCards}
+        totalCount={sessionItems.length}
+        correctCount={passedCards.length}
+        unresolvedCards={unresolvedCards}
+        reviewedCards={reviewedCards}
+        passedCards={passedCards}
         mainAction={
           nextAvailableCount > 0
             ? {
@@ -301,7 +357,7 @@ export function CommonPoolSessionModal({
                 onClick: onClose,
               }
         }
-        onReviewMistakes={incorrectCards.length > 0 ? handleReviewMistakes : undefined}
+        onReviewMistakes={unresolvedCards.length > 0 ? handleReviewMistakes : undefined}
         onClose={onClose}
       />
     );
@@ -323,9 +379,15 @@ export function CommonPoolSessionModal({
       {/* ヘッダー */}
       <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
-            🎯 共通プール復習 (FSRS)
-          </span>
+          {isReviewMode ? (
+            <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-300">
+              🔄 間違えた問題の復習
+            </span>
+          ) : (
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+              🎯 共通プール復習 (FSRS)
+            </span>
+          )}
 
           {/* 3色カラーバッジ */}
           <span
@@ -371,7 +433,7 @@ export function CommonPoolSessionModal({
       </div>
 
       {/* パープル（先取り）カード含有時の事前案内バナー */}
-      {futureNotice && (
+      {futureNotice && !isReviewMode && (
         <div className="border-b border-purple-800/40 bg-purple-950/40 px-4 py-1.5 text-center text-[11px] text-purple-200">
           ⚡ 本セッションには、最長で【{futureNotice.dateLabel}（あと
           {futureNotice.daysAhead}日後）】に復習予定の先取りカードが {earlyCount} 枚含まれます

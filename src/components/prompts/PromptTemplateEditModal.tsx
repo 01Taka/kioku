@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 
 import type { PromptTemplate } from "../../types/schema";
-import { CheckIcon, SparklesIcon, XIcon } from "../icons";
+import { parseTemplateClipboardText } from "../../utils/promptTemplateParser";
+import { CheckIcon, ClipboardIcon, HelpCircleIcon, SparklesIcon, XIcon } from "../icons";
 
 interface PromptTemplateEditModalProps {
   template?: PromptTemplate | null; // null/undefined の場合は新規作成
@@ -18,7 +19,48 @@ export function PromptTemplateEditModal({
   const [name, setName] = useState(template?.name ?? "");
   const [description, setDescription] = useState(template?.description ?? "");
   const [content, setContent] = useState(template?.content ?? "");
+  const [showGuide, setShowGuide] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importNotice, setImportNotice] = useState<string | null>(null);
+
+  // クリップボードから本文（および構成に応じた名前・概要）を取り込む
+  const handleImportFromClipboard = async () => {
+    setError(null);
+    setImportNotice(null);
+    try {
+      if (!navigator.clipboard?.readText) {
+        throw new Error("ブラウザのクリップボードAPIが利用できません。");
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text || !text.trim()) {
+        setError("クリップボードが空です。テキストをコピーしてから再度お試しください。");
+        return;
+      }
+
+      const parsed = parseTemplateClipboardText(text);
+
+      if (parsed.name) {
+        setName(parsed.name);
+      }
+      if (parsed.description) {
+        setDescription(parsed.description);
+      }
+      setContent(parsed.content);
+
+      if (parsed.isStructured && (parsed.name || parsed.description)) {
+        setImportNotice("✨ クリップボードからテンプレート名・概要・本文を自動取り込みしました！");
+      } else {
+        setImportNotice("📋 クリップボードの内容を本文に取り込みました！");
+      }
+      setTimeout(() => setImportNotice(null), 3500);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "クリップボードの読み取りに失敗しました。アクセス許可をご確認ください。",
+      );
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +94,6 @@ export function PromptTemplateEditModal({
               <h2 className="text-base font-bold text-white">
                 {isEditing ? "プロンプトテンプレートの編集" : "新規プロンプトテンプレートの作成"}
               </h2>
-              <p className="text-xs text-slate-400">
-                {isEditing
-                  ? `「${template.name}」をカスタマイズします`
-                  : "独自のプロンプトテンプレートを追加します"}
-              </p>
             </div>
           </div>
           <button
@@ -71,6 +108,33 @@ export function PromptTemplateEditModal({
         {/* フォーム本文 */}
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-4 overflow-y-auto p-5">
+            {/* 一番上: 本文取り込みカード */}
+            <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-950/20 p-3.5 sm:flex-row">
+              <div className="text-center sm:text-left">
+                <span className="text-xs font-bold text-slate-200">
+                  クリップボードから本文取り込み
+                </span>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  二重の区切り線（--- が2行連続）で区切ることで「名前」「概要」「本文」を一括入力できます。
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleImportFromClipboard}
+                className="flex cursor-pointer items-center space-x-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500"
+              >
+                <ClipboardIcon size={15} />
+                <span>本文取り込み</span>
+              </button>
+            </div>
+
+            {importNotice && (
+              <div className="animate-fadeIn rounded-xl border border-emerald-800/80 bg-emerald-950/60 p-2.5 text-xs text-emerald-300">
+                {importNotice}
+              </div>
+            )}
+
             {error && (
               <div className="rounded-xl border border-rose-800/80 bg-rose-950/60 p-3 text-xs text-rose-300">
                 {error}
@@ -106,43 +170,72 @@ export function PromptTemplateEditModal({
               />
             </div>
 
-            {/* テンプレート記法ガイド */}
-            <div className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-3.5 text-xs text-slate-300">
-              <span className="font-semibold text-indigo-300">💡 テンプレートの書き方・連動ルール:</span>
-              <ul className="mt-1.5 space-y-1 text-[11px] text-slate-300/90 list-disc list-inside">
-                <li>
-                  <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">{"{{変数名}}"}</code>
-                  : 生成画面で入力フォームが自動作成され、入力値に置換されます。
-                </li>
-                <li>
-                  <span className="font-medium text-slate-200">行ごとのトグル</span>:
-                  空行以外の各行は、生成画面で個別に含める/除外を切り替えられます。
-                </li>
-                <li>
-                  <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">[BLOCK:タイトル]...[/BLOCK]</code>
-                  : 複数行をひとまとめの連動ブロックとして扱います。
-                </li>
-                <li>
-                  <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">```...```</code>
-                  : コードブロックは自動的に1つのまとまりとして連動します。
-                </li>
-              </ul>
-            </div>
-
             {/* プロンプト本文 */}
             <div className="flex flex-1 flex-col">
-              <label className="block text-xs font-semibold text-slate-300">
-                プロンプト本文 <span className="text-rose-400">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5">
+                  <label className="text-xs font-semibold text-slate-300">
+                    プロンプト本文 <span className="text-rose-400">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowGuide((prev) => !prev)}
+                    className="flex cursor-pointer items-center space-x-1 rounded-full border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-indigo-500/50 hover:bg-slate-700 hover:text-indigo-300"
+                    title="書き方・連動ルールの表示/非表示"
+                  >
+                    <HelpCircleIcon size={12} />
+                    <span>書き方・連動ルール</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* [?] アイコンから開閉される記法ガイド */}
+              {showGuide && (
+                <div className="animate-fadeIn mt-2 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-3 text-xs text-slate-300">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-indigo-300">💡 テンプレートの書き方・連動ルール:</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowGuide(false)}
+                      className="cursor-pointer text-slate-500 hover:text-slate-300"
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                  <ul className="mt-1.5 space-y-1 text-[11px] text-slate-300/90 list-disc list-inside">
+                    <li>
+                      <span className="font-medium text-slate-200">一括取り込み</span>:
+                      「テンプレート名」「概要」「本文」の間を二重区切り線（<code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">---</code> が2行連続）で区切って「本文取り込み」を押すと各項目に自動反映されます。
+                    </li>
+                    <li>
+                      <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">{"{{変数名}}"}</code>
+                      : 生成画面で入力フォームが自動作成され、入力値に置換されます。
+                    </li>
+                    <li>
+                      <span className="font-medium text-slate-200">行ごとのトグル</span>:
+                      空行以外の各行は、生成画面で個別に含める/除外を切り替えられます。
+                    </li>
+                    <li>
+                      <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">[BLOCK:タイトル]...[/BLOCK]</code>
+                      : 複数行をひとまとめの連動ブロックとして扱います。
+                    </li>
+                    <li>
+                      <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">```...```</code>
+                      : コードブロックは自動的に1つのまとまりとして連動します。
+                    </li>
+                  </ul>
+                </div>
+              )}
+
               <textarea
                 value={content}
                 onChange={(e) => {
                   setContent(e.target.value);
                   setError(null);
                 }}
-                rows={12}
+                rows={13}
                 placeholder="プロンプト本文を入力してください。{{教材テキスト}} や [BLOCK:指示] ... [/BLOCK] が使用できます。"
-                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
               />
             </div>
           </div>

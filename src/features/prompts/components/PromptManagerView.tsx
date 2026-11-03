@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   AlertCircleIcon,
@@ -68,21 +68,21 @@ export function PromptManagerView() {
     return () => window.removeEventListener("click", handleOutsideClick);
   }, [menuTemplateId]);
 
-  // コピー成功フラグ・警告メッセージ（タイマーで安全にクリーンアップ）
+  // コピー成功フラグ・警告メッセージ（useEffectで安全に自動消去）
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [copyWarningMap, setCopyWarningMap] = useState<Record<string, string>>({});
-  const copiedTimerRef = useRef<number | null>(null);
-  const warningTimersRef = useRef<Record<string, number>>({});
+  const [copyWarning, setCopyWarning] = useState<{ id: string; message: string } | null>(null);
 
   useEffect(() => {
-    const warningTimers = warningTimersRef.current;
-    return () => {
-      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
-      for (const timerId of Object.values(warningTimers)) {
-        window.clearTimeout(timerId);
-      }
-    };
-  }, []);
+    if (!copiedId) return;
+    const timer = window.setTimeout(() => setCopiedId(null), 1200);
+    return () => window.clearTimeout(timer);
+  }, [copiedId]);
+
+  useEffect(() => {
+    if (!copyWarning) return;
+    const timer = window.setTimeout(() => setCopyWarning(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [copyWarning]);
 
   // 編集モーダル状態（一覧画面・詳細画面の両方から共通で利用）
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -154,21 +154,10 @@ export function PromptManagerView() {
     });
   };
 
-  // 警告メッセージを一定時間表示するヘルパー
-  const showWarningForTemplate = (tplId: string, message: string, durationMs: number) => {
-    setCopyWarningMap((prev) => ({ ...prev, [tplId]: message }));
-    if (warningTimersRef.current[tplId]) {
-      window.clearTimeout(warningTimersRef.current[tplId]);
-    }
-    warningTimersRef.current[tplId] = window.setTimeout(() => {
-      setCopyWarningMap((prev) => {
-        const next = { ...prev };
-        delete next[tplId];
-        return next;
-      });
-      delete warningTimersRef.current[tplId];
-    }, durationMs);
-  };
+  // 警告メッセージ表示ヘルパー
+  const showWarningForTemplate = useCallback((tplId: string, message: string) => {
+    setCopyWarning({ id: tplId, message });
+  }, []);
 
   // テンプレート複製
   const handleDuplicateTemplate = (id: string) => {
@@ -210,7 +199,7 @@ export function PromptManagerView() {
       // 未入力の必須変数がある場合、アコーディオンを自動展開して警告を表示
       setExpandedTemplateId(tpl.id);
       const names = missingRequired.map((v) => `{{${v.name}}}`).join("、");
-      showWarningForTemplate(tpl.id, `必須項目（${names}）を入力してください`, 3000);
+      showWarningForTemplate(tpl.id, `必須項目（${names}）を入力してください`);
       return;
     }
 
@@ -221,8 +210,6 @@ export function PromptManagerView() {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(tpl.id);
-      if (copiedTimerRef.current) window.clearTimeout(copiedTimerRef.current);
-      copiedTimerRef.current = window.setTimeout(() => setCopiedId(null), 1200);
 
       // コピー完了時に自動ですべてクリア
       if (defs.length > 0) {
@@ -236,9 +223,31 @@ export function PromptManagerView() {
       }
     } catch (err) {
       console.error("コピー失敗:", err);
-      showWarningForTemplate(tpl.id, "コピーに失敗しました", 2000);
+      showWarningForTemplate(tpl.id, "コピーに失敗しました");
     }
   };
+
+  // テンプレートを「作成」「修正」「カスタム」に分類
+  const sections = useMemo(() => {
+    const list: { key: string; label: string; templates: PromptTemplate[] }[] = [
+      {
+        key: "create",
+        label: "作成",
+        templates: promptTemplates.filter((t) => t.isPreset && t.category === "create"),
+      },
+      {
+        key: "refine",
+        label: "修正",
+        templates: promptTemplates.filter((t) => t.isPreset && t.category === "refine"),
+      },
+      {
+        key: "custom",
+        label: "カスタム",
+        templates: promptTemplates.filter((t) => !t.isPreset || t.category === "custom"),
+      },
+    ];
+    return list.filter((sec) => sec.templates.length > 0);
+  }, [promptTemplates]);
 
   const detailTemplate =
     activeView.type === "detail"
@@ -281,17 +290,32 @@ export function PromptManagerView() {
 
           {/* テンプレート一覧（アコーディオンリスト） */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4">
-            <div className="mx-auto flex w-full max-w-3xl flex-col space-y-1.5">
-              {promptTemplates.length === 0 ? (
+            <div className="mx-auto flex w-full max-w-3xl flex-col space-y-3">
+              {sections.length === 0 ? (
                 <div className="py-12 text-center text-xs text-slate-500">
                   テンプレートがありません。「新規作成」から作成してください。
                 </div>
               ) : (
-                promptTemplates.map((tpl) => {
+                sections.map((section, sectionIdx) => (
+                  <div key={section.key} className="space-y-1.5">
+                    {/* 区切り線（1件以上ある場合のみ表示） */}
+                    <div
+                      className={`flex items-center select-none ${
+                        sectionIdx === 0 ? "mb-1.5 mt-0.5" : "mb-1.5 mt-3.5"
+                      }`}
+                    >
+                      <div className="flex-1 border-t border-slate-800/80" />
+                      <span className="px-3 text-xs font-semibold tracking-wider text-slate-400">
+                        ─── {section.label} ───
+                      </span>
+                      <div className="flex-1 border-t border-slate-800/80" />
+                    </div>
+
+                    {section.templates.map((tpl) => {
                   const isExpanded = expandedTemplateId === tpl.id;
                   const defs = templateDefsMap.get(tpl.id) ?? [];
                   const isCopied = copiedId === tpl.id;
-                  const copyWarning = copyWarningMap[tpl.id];
+                  const warningMessage = copyWarning?.id === tpl.id ? copyWarning.message : null;
 
                   // 直近記憶の変数がこのテンプレートに適用可能か
                   const hasRestorable = defs.some(
@@ -551,10 +575,10 @@ export function PromptManagerView() {
                           )}
 
                           {/* 警告メッセージ表示 */}
-                          {copyWarning && (
+                          {warningMessage && (
                             <div className="animate-fadeIn mt-2 flex items-center space-x-1.5 rounded-lg border border-rose-500/40 bg-rose-950/70 px-2.5 py-1 text-xs text-rose-300">
                               <AlertCircleIcon size={13} className="flex-shrink-0 text-rose-400" />
-                              <span>{copyWarning}</span>
+                              <span>{warningMessage}</span>
                             </div>
                           )}
 
@@ -579,7 +603,9 @@ export function PromptManagerView() {
                       )}
                     </div>
                   );
-                })
+                })}
+                  </div>
+                ))
               )}
 
               {/* 最下部: プリセット復元リンク */}

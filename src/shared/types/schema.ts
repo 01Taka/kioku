@@ -65,12 +65,17 @@ export const FlashcardContentSchema = z.object({
 });
 export type FlashcardContent = z.infer<typeof FlashcardContentSchema>;
 
+/** AI問題生成用プロンプトテンプレートのカテゴリ */
+export const PromptCategorySchema = z.enum(["create", "refine", "custom"]);
+export type PromptCategory = z.infer<typeof PromptCategorySchema>;
+
 /** AI問題生成用プロンプトテンプレート */
 export const PromptTemplateSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(1, "テンプレート名を入力してください"),
   description: z.string().default(""),
   isPreset: z.boolean().default(false),
+  category: PromptCategorySchema.optional(),
   content: z.string(),
   enabledLines: z.record(z.string(), z.boolean()).optional(), // 行/ブロックIDごとのデフォルトON/OFF
   createdAt: z.string(),

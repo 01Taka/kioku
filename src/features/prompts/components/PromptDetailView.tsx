@@ -218,7 +218,7 @@ export function PromptDetailView({
               {segments.map((seg) => {
                 if (!seg.isToggleable) {
                   return (
-                    <div key={seg.id} className="px-2 py-1 select-text">
+                    <div key={seg.id} className="px-2.5 py-1 select-text">
                       <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-slate-300">
                         {seg.displayText}
                       </pre>
@@ -231,10 +231,10 @@ export function PromptDetailView({
                   <div
                     key={seg.id}
                     onClick={() => handleToggleSegment(seg.id)}
-                    className={`group flex cursor-pointer items-start space-x-2.5 rounded px-2 py-1 transition hover:bg-slate-800/60 ${
+                    className={`group flex cursor-pointer items-start space-x-2.5 rounded px-2 py-1 transition ${
                       isChecked
-                        ? "text-slate-200"
-                        : "text-slate-500 line-through opacity-40 hover:opacity-70"
+                        ? "bg-slate-900/40 text-slate-200 hover:bg-slate-800/60"
+                        : "bg-slate-950/70 text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
                     }`}
                   >
                     <input
@@ -245,8 +245,8 @@ export function PromptDetailView({
                     />
                     <div className="min-w-0 flex-1">
                       {seg.type === "CUSTOM_BLOCK" && (
-                        <div className="mb-1">
-                          <span className="inline-block rounded border border-indigo-500/30 bg-indigo-950/80 px-1.5 py-px font-sans text-[10px] text-indigo-300 not-italic no-underline">
+                        <div className="mb-0.5">
+                          <span className="inline-block rounded border border-indigo-500/30 bg-indigo-950/80 px-1.5 py-px font-sans text-[10px] text-indigo-300">
                             {seg.title || "連動ブロック"}
                           </span>
                         </div>

@@ -1092,12 +1092,15 @@ export const useAppStore = create<AppState>()(
           state.promptTemplates = PRESET_PROMPT_TEMPLATES;
         } else {
           const presetMap = new Map(PRESET_PROMPT_TEMPLATES.map((p) => [p.id, p]));
-          state.promptTemplates = state.promptTemplates.map((t) => {
+          const updatedTemplates = state.promptTemplates.map((t) => {
             if (t.isPreset && presetMap.has(t.id)) {
               return { ...presetMap.get(t.id)! };
             }
             return t;
           });
+          const existingIds = new Set(updatedTemplates.map((t) => t.id));
+          const missingPresets = PRESET_PROMPT_TEMPLATES.filter((p) => !existingIds.has(p.id));
+          state.promptTemplates = [...updatedTemplates, ...missingPresets];
         }
       },
     },

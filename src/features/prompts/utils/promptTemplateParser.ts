@@ -19,8 +19,9 @@ export interface PromptVariableDefinition {
   isRequired: boolean; // *変数名 で指定された必須変数
 }
 
-const BULLET_PREFIX_REGEX = /^[-*+]\s+/;
-const NUMBERED_LIST_REGEX = /^\d+[.)]\s+/;
+const HYPHEN_BULLET_PREFIX_REGEX = /^-\s+/;
+const PLUS_BULLET_PREFIX_REGEX = /^\+\s+/;
+const ASTERISK_BULLET_PREFIX_REGEX = /^\*\s+/;
 const HEADING_LINE_REGEX = /^(#{1,6})\s+(.*)$/;
 const CUSTOM_BLOCK_OPEN_REGEX = /^\[BLOCK(?::\s*([^\]]+))?\]$/i;
 const CUSTOM_BLOCK_CLOSE_REGEX = /^\[\/BLOCK\]$/i;
@@ -37,12 +38,40 @@ export function getVariableKey(name: string, fallback?: string): string {
 }
 
 /**
- * 箇条書き（リスト項目）かどうか判定する
- * 行頭が -, *, +, または 1. 2. 等の数字付きリスト
+ * ハイフン「- 」による箇条書き行かどうか判定する（省略可能・デフォルトON）
  */
-export function isBulletLine(line: string): boolean {
+export function isHyphenBulletLine(line: string): boolean {
+  return HYPHEN_BULLET_PREFIX_REGEX.test(line.trim());
+}
+
+/**
+ * プラス「+ 」による箇条書き行かどうか判定する（省略可能・デフォルトOFF・出力時は「- 」に変換）
+ */
+export function isPlusBulletLine(line: string): boolean {
+  return PLUS_BULLET_PREFIX_REGEX.test(line.trim());
+}
+
+/**
+ * アスタリスク「* 」による箇条書き行かどうか判定する（省略不可・固定保護・出力時は「- 」に変換）
+ */
+export function isAsteriskBulletLine(line: string): boolean {
+  return ASTERISK_BULLET_PREFIX_REGEX.test(line.trim());
+}
+
+/**
+ * 「+ 」または「* 」で始まる箇条書き行を出力用の「- 」に正規化する
+ */
+export function normalizeBulletPrefix(line: string): string {
   const trimmed = line.trim();
-  return BULLET_PREFIX_REGEX.test(trimmed) || NUMBERED_LIST_REGEX.test(trimmed);
+  if (PLUS_BULLET_PREFIX_REGEX.test(trimmed)) {
+    // 先頭のインデントを維持して「+ 」を「- 」に置換
+    return line.replace(/^(\s*)\+\s+/, "$1- ");
+  }
+  if (ASTERISK_BULLET_PREFIX_REGEX.test(trimmed)) {
+    // 先頭のインデントを維持して「* 」を「- 」に置換
+    return line.replace(/^(\s*)\*\s+/, "$1- ");
+  }
+  return line;
 }
 
 /**
@@ -199,16 +228,31 @@ export function parseTemplateSegments(
       continue;
     }
 
-    // 3. 通常の行（箇条書き行はトグル可能、それ以外の文章や見出しは固定STATIC）
-    const isBullet = isBulletLine(line);
-    const segmentId = `${isBullet ? "bullet" : "static"}_${index++}`;
-    const isEnabled = isBullet ? (savedEnabledMap?.[segmentId] ?? true) : true;
+    // 3. 通常の行
+    // - 「- 」で始まる行: 省略可能（isToggleable: true、デフォルトON）
+    // - 「+ 」で始まる行: 省略可能（isToggleable: true、デフォルトOFF・出力時は「- 」に自動変換）
+    // - 「* 」で始まる行: 省略不可（isToggleable: false、固定保護・出力時は「- 」に自動変換）
+    // - それ以外の行（通常の文章や見出し等）も省略不可（STATIC）
+    const isHyphen = isHyphenBulletLine(line);
+    const isPlus = isPlusBulletLine(line);
+    const isAsterisk = isAsteriskBulletLine(line);
+    const isToggleable = isHyphen || isPlus;
+
+    let segmentType: TemplateSegment["type"] = "STATIC";
+    if (isHyphen || isPlus || isAsterisk) {
+      segmentType = "BULLET";
+    }
+
+    const segmentId = `${isToggleable ? "bullet" : "static"}_${index++}`;
+    // 保存済み設定があればそれを優先。未設定時のデフォルト: ハイフンはON (true)、プラスはOFF (false)
+    const defaultInitialState = isPlus ? false : true;
+    const isEnabled = isToggleable ? (savedEnabledMap?.[segmentId] ?? defaultInitialState) : true;
     const cleanDisplayText = line.replace(TRAILING_CONDITION_REGEX, "");
 
     segments.push({
       id: segmentId,
-      type: isBullet ? "BULLET" : "STATIC",
-      isToggleable: isBullet,
+      type: segmentType,
+      isToggleable,
       displayText: cleanDisplayText,
       outputTemplate: line,
       defaultEnabled: isEnabled,
@@ -390,7 +434,8 @@ export function assemblePrompt(
     for (const line of segLines) {
       const processed = processTemplateLine(line, variables);
       if (processed !== null) {
-        activeLines.push(processed);
+        // 出力時は「+ 」「* 」のリストを「- 」に正規化
+        activeLines.push(normalizeBulletPrefix(processed));
       }
     }
   }

@@ -265,16 +265,24 @@ export function PromptTemplateEditModal({
                       見出しから次の同等以上の見出し（または末尾）までのすべての行が変数未入力等で省略された場合、見出し自体も自動的に省略されます（配下の小見出しがすべて省略された場合も親見出しが連鎖して省略されます）。変数のない固定の行がある場合は見出しが省略されることはありません。
                     </li>
                     <li>
-                      <span className="font-medium text-slate-200">命令のON/OFF選択</span>:
-                      詳細画面では、箇条書き行（
+                      <span className="font-medium text-slate-200">命令のON/OFF選択（リスト仕様）</span>:
+                      詳細画面では、ハイフン（
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         -{" "}
                       </code>
-                      等）および{" "}
+                      ）は<span className="text-emerald-300">デフォルトONの省略可能ルール</span>、プラス（
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        +{" "}
+                      </code>
+                      ）は<span className="text-amber-300">デフォルトOFFの省略可能ルール</span>（ONにすると出力時は「- 」に変換）、アスタリスク（
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        *{" "}
+                      </code>
+                      ）は<span className="text-indigo-300">省略不可の固定ルール</span>（出力時は「- 」に変換）となります。また{" "}
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         [BLOCK:タイトル]...[/BLOCK]
                       </code>{" "}
-                      で囲んだ範囲のみがON/OFF切り替え可能になります。
+                      で囲んだ範囲もまとめてトグル可能です。
                     </li>
                   </ul>
                 </div>

@@ -87,6 +87,18 @@ export function PromptDetailView({
     saveToggleStates(() => false);
   };
 
+  const handleResetToDefaultSegments = () => {
+    // テンプレートの初期パース状態（savedEnabledMapなし）を生成してリセット
+    const defaultSegments = parseTemplateSegments(template.content);
+    const nextEnabledLines: Record<string, boolean> = {};
+    for (const seg of defaultSegments) {
+      if (seg.isToggleable) {
+        nextEnabledLines[seg.id] = seg.defaultEnabled;
+      }
+    }
+    updatePromptTemplate(template.id, { enabledLines: nextEnabledLines });
+  };
+
   // 完成プロンプトの組み立て
   const finalPrompt = useMemo(() => {
     return assemblePrompt(segments, activeSegmentIds, variableValues);
@@ -188,6 +200,15 @@ export function PromptDetailView({
                   className="cursor-pointer text-slate-400 transition hover:text-rose-400"
                 >
                   全解除
+                </button>
+                <span className="text-slate-600">|</span>
+                <button
+                  type="button"
+                  onClick={handleResetToDefaultSegments}
+                  className="cursor-pointer text-slate-400 transition hover:text-amber-300"
+                  title="テンプレート定義の既定状態（- はON、+ はOFF）に戻す"
+                >
+                  初期値
                 </button>
               </div>
             </div>

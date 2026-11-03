@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { HomeView } from "./components/home/HomeView";
-import { SettingsIcon } from "./components/icons";
-import { CourseDetailView } from "./components/materials/CourseDetailView";
-import { CourseListView } from "./components/materials/CourseListView";
+import { HomeView } from "@/features/home";
+import { CourseDetailView, CourseListView } from "@/features/materials";
+import { CommonPoolSessionModal } from "@/features/practice";
+import { PromptManagerView } from "@/features/prompts";
+import { SettingsModal } from "@/features/settings";
 import {
   DesktopSidebar,
   type HomeSubTab,
   MobileBottomNav,
   type NavCategory,
-} from "./components/navigation/AppNavigation";
-import { PromptManagerView } from "./components/prompts/PromptManagerView";
-import { CommonPoolSessionModal } from "./components/session/CommonPoolSessionModal";
-import { SettingsModal } from "./components/settings/SettingsModal";
-import { useAppStore } from "./store/useAppStore";
+} from "@/shared/components/AppNavigation";
+import { SettingsIcon } from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
 
 export default function App() {
   const { courses, selectedCourseId, lastSelectedCourseId, selectCourse, syncDailyCutoff } =

@@ -1,203 +1,60 @@
 import type { PromptTemplate } from "../types/schema";
+import { parseTemplateClipboardText } from "./promptTemplateParser";
 
-export const PRESET_PROMPT_TEMPLATES: PromptTemplate[] = [
-  {
-    id: "preset-batch-generation",
-    name: "教材テキストから一括問題生成（基本）",
-    description: "講義ノートや教科書テキストから、記憶定着に最適な一問一答フラッシュカードをJSON形式で一括生成します。",
-    isPreset: true,
-    content: `# 指示
-あなたは学習と記憶定着の専門家です。
-提供された以下の【教材テキスト】を読み込み、反復学習に最適な一問一答形式のフラッシュカードを【{{問題数}}】問作成してください。
+// src/templates/prompts 配下の .md ファイルをテキストとして一括インポート
+const promptModules = import.meta.glob<string>("../templates/prompts/*.md", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
 
-【教材テキスト】:
-{{教材テキスト}}
+/**
+ * .md のファイル名から固定のプリセットIDとソート順を決定するメタデータ
+ */
+const PRESET_METADATA: Record<string, { id: string; order: number }> = {
+  "batch-generation": { id: "preset-batch-generation", order: 1 },
+  "refine-cards": { id: "preset-refine-cards", order: 2 },
+  "terms-definitions": { id: "preset-terms-definitions", order: 3 },
+  "active-recall-rewrite": { id: "preset-active-recall-rewrite", order: 4 },
+  "meta-prompt-generator": { id: "preset-meta-prompt-generator", order: 5 },
+};
 
-【特記事項・フォーカス】:
-{{特記事項}}
+function loadPresetPromptTemplates(): PromptTemplate[] {
+  const templates: PromptTemplate[] = [];
 
-【問題作成のルール（使いたいものを選んでください）】:
-- 1枚のカードには「1つの問い」と「1つの答え」だけを入れる（詰め込みすぎない）
-- 問題文を読んだだけで、何を答えるべきか迷わず思い出せる具体的な問いにする
-- 解答は短くスッキリまとめ、暗記しやすいキーワードを中心に答える
-- なぜそうなるのかの短い理由や補足メモを解答の後ろに添える
+  for (const [filePath, rawContent] of Object.entries(promptModules)) {
+    // 例: "../templates/prompts/batch-generation.md" -> "batch-generation"
+    const match = filePath.match(/\/([^/]+)\.md$/);
+    const fileNameWithoutExt = match ? match[1] : filePath;
 
-【出力形式】
-出力は必ず以下のJSON配列のみを出力してください。Markdownコードブロックで囲み、前後に余計な解説文や挨拶は含めないでください。
-\`\`\`json
-[
-  {
-    "question": "問題文をここに記述",
-    "answer": "解答文をここに記述"
+    const meta = PRESET_METADATA[fileNameWithoutExt] ?? {
+      id: `preset-${fileNameWithoutExt}`,
+      order: 99,
+    };
+
+    const parsed = parseTemplateClipboardText(rawContent);
+
+    templates.push({
+      id: meta.id,
+      name: parsed.name ?? fileNameWithoutExt,
+      description: parsed.description ?? "",
+      isPreset: true,
+      content: parsed.content,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
   }
-]
-\`\`\``,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "preset-refine-cards",
-    name: "既存問題のブラッシュアップ（ID付き更新用）",
-    description: "既存のカード（ID付き）のわかりにくさや不備を改善し、学習進捗を維持したまま上書き更新できるようにします。",
-    isPreset: true,
-    content: `# 指示
-以下の【既存カードリスト(JSON)】に含まれる問題をレビューし、より能動想起しやすく、記憶定着しやすい良問へとリライト・改善してください。
 
-【既存カードリスト(JSON)】:
-{{既存カードリスト}}
+  // 決まった表示順序でソート
+  templates.sort((a, b) => {
+    const orderA =
+      Object.values(PRESET_METADATA).find((m) => m.id === a.id)?.order ?? 99;
+    const orderB =
+      Object.values(PRESET_METADATA).find((m) => m.id === b.id)?.order ?? 99;
+    return orderA - orderB;
+  });
 
-【改善方針】:
-{{改善方針}}
+  return templates;
+}
 
-★重要: 元のカードの "id" は絶対に書き換えず、そのまま維持してください（元のカードと正しく照合・更新するため）。
-
-【改善のルール（使いたいものを選んでください）】:
-- 問題文が長くて読みにくい場合は、何を聞かれているかパッとわかるように短く整理する
-- 解答が長くて覚えにくい場合は、大事なキーワードがすぐ目に入るようにまとめる
-- 元の意味や正しい内容（事実関係）は勝手に変えない
-
-【出力形式】
-改善した全件を以下のJSON形式で出力してください。余計な前置きや後置きは含めず、純粋なJSONのみを返してください。
-\`\`\`json
-[
-  {
-    "id": "元のカードのID",
-    "question": "改善後の問題文",
-    "answer": "改善後の解答文"
-  }
-]
-\`\`\``,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "preset-terms-definitions",
-    name: "重要用語・定義の一問一答集生成",
-    description: "指定した用語・トピック一覧から、「用語名を見て定義を答える」または「定義から用語名を答える」精度の高い問題を生成します。",
-    isPreset: true,
-    content: `# 指示
-以下の【用語・キーワード一覧】に基づいて、【{{分野名}}】に関する一問一答カードを作成してください。
-
-【用語・キーワード一覧】:
-{{用語一覧}}
-
-【分野名・文脈】:
-{{分野名}}
-
-【作成ルール（使いたいものを選んでください）】:
-- 単に用語の名前を答えさせるだけでなく、その意味や仕組みを答える問題もバランスよく混ぜる
-- 「〇〇と△△の違いは何か？」「〇〇の目的は何か？」など、テストに出やすい実践的な聞き方にする
-- 似ていて間違えやすい言葉がある場合は、見分けるポイントを解答にメモする
-
-【出力形式】
-以下のJSON形式で出力してください。
-\`\`\`json
-[
-  {
-    "question": "〇〇の定義または役割は何か？",
-    "answer": "簡潔な定義・説明"
-  }
-]
-\`\`\``,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "preset-active-recall-rewrite",
-    name: "穴埋め・選択肢からの記述化（良問リライト）",
-    description: "穴埋め問題や記号選択問題、過去問などを、ヒントがなくても頭の中から自力で想起できる良質な記述式問題に変換します。",
-    isPreset: true,
-    content: `# 指示
-以下の【元の問題文や試験問題】を分析し、選択肢や穴埋め特有のヒントに依存せず、能動的に知識を思い出す訓練ができるフラッシュカード問題へ変換してください。
-
-【元の問題文や試験問題】:
-{{元の問題文}}
-
-【留意事項】:
-{{留意事項}}
-
-【変換ルール（使いたいものを選んでください）】:
-- 穴埋め問題は、前後のヒントがなくても頭の中から答えを思い出せる完全な質問文に直す
-- 選択問題（4択など）は、正解の言葉だけでなく「なぜそれが答えになるのか」を問う形にする
-- 解答には、答えと一緒に「理由や覚え方のコツ」を1〜2行で添える
-
-【出力形式】
-以下のJSON形式で出力してください。
-\`\`\`json
-[
-  {
-    "question": "再構成した能動想起用の問題文",
-    "answer": "解答と簡潔な根拠"
-  }
-]
-\`\`\``,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    id: "preset-meta-prompt-generator",
-    name: "問題生成プロンプトの設計・作成（メタプロンプト）",
-    description: "自分の学習分野や教材に最適化した「AI問題生成プロンプト（再利用可能なテンプレート）」を自動設計・出力します。",
-    isPreset: true,
-    content: `# 指示
-あなたは認知科学および分散学習（Spaced Repetition / FSRS）に精通したプロンプトエンジニアです。
-ユーザーが指定する以下の【学習分野・科目】や【作成したい問題の目的・形式】の要件を分析し、学習アプリ「kioku」で繰り返し活用できる高品質な「AI問題生成プロンプトテンプレート」を設計・作成してください。
-
-【学習分野・科目】:
-{{学習分野・科目}}
-
-【作成したい問題の目的・形式】:
-{{作成したい問題の目的・形式}}
-
-【対象教材や出題例】:
-{{対象教材や出題例}}
-
-【重視したいルール・こだわり】:
-{{重視したいルール・こだわり}}
-
-【プロンプト設計ルール（使いたいものを選んでください）】:
-- 本アプリの仕様に従い、後から教材や問題数を差し替えられるよう {{教材テキスト}} や {{問題数|10}} などの変数を組み込む
-- アプリのUI上で1行ごとにON/OFF切り替えできるよう、問題作成のルールや制約はハイフン「- 」で始まる箇条書きリストにする
-- 1枚のカードには「1つの問い」と「1つの答え」だけを扱う最小情報原則（Minimum Information Principle）を徹底させる
-- 選択肢や文脈のヒントなしで知識を自力想起させる能動想起（Active Recall）を促す問い方を指定する
-- 解答はスピーディに確認できるよう要点・キーワードを中心にまとめ、必要に応じて短い解説や根拠を添えさせる
-- 指定された学習分野特有の頻出トラップ、混同しやすい概念の比較、実務・試験に即した専門的な出題ルールを盛り込む
-
-【出力形式】
-以下の項目をそのままコピー＆ペーストしてアプリに登録できるよう、以下のフォーマットで出力してください。
-
-■ テンプレート名:
-（アプリの管理画面で識別しやすい、簡潔で分かりやすい名称）
-
-■ 説明文:
-（このテンプレートがどのような教材からどんな問題を生成するものかの要約説明）
-
-■ テンプレート本文:
-# 指示
-（AIに対する専門家の役割設定と、問題作成の全体指示）
-
-【教材テキスト】:
-{{教材テキスト}}
-
-【特記事項・フォーカス】:
-{{特記事項}}
-
-【問題作成ルール（使いたいものを選んでください）】:
-- （分野や目的に最適化された具体的な出題ルール1）
-- （出題ルール2）
-- （出題ルール3）
-
-【出力形式】
-出力は必ず以下のJSON配列のみを出力してください。Markdownコードブロックで囲み、前後に余計な解説文や挨拶は含めないでください。
-\`\`\`json
-[
-  {
-    "question": "問題文",
-    "answer": "解答文"
-  }
-]
-\`\`\``,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-];
+export const PRESET_PROMPT_TEMPLATES: PromptTemplate[] = loadPresetPromptTemplates();

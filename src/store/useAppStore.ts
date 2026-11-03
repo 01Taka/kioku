@@ -1087,17 +1087,9 @@ export const useAppStore = create<AppState>()(
             lecturePool: normalizeLecturePoolState(card.lecturePool),
           }));
         }
-        // テンプレートの同期（未初期化ならプリセット投入、既にあれば標準プリセットを最新化）
+        // テンプレートの初期化（未初期化の場合のみ初期プリセットを投入し、既存の編集内容や行選択状態は保持）
         if (!Array.isArray(state.promptTemplates) || state.promptTemplates.length === 0) {
           state.promptTemplates = PRESET_PROMPT_TEMPLATES;
-        } else {
-          const presetMap = new Map(PRESET_PROMPT_TEMPLATES.map((p) => [p.id, p]));
-          state.promptTemplates = state.promptTemplates.map((t) => {
-            if (t.isPreset && presetMap.has(t.id)) {
-              return { ...presetMap.get(t.id)! };
-            }
-            return t;
-          });
         }
       },
     },

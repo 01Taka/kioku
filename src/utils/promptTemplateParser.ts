@@ -4,15 +4,13 @@
 
 export interface TemplateSegment {
   id: string;
-  type: "LINE" | "BULLET" | "CODE_BLOCK" | "CUSTOM_BLOCK" | "STATIC" | "SECTION_VARIABLE";
+  type: "BULLET" | "CODE_BLOCK" | "CUSTOM_BLOCK" | "STATIC" | "SECTION_VARIABLE";
   isToggleable: boolean; // チェックボックスでON/OFFできるか（箇条書き or 明示的ブロック）
   title?: string;
-  rawText: string; // セグメント全体の生テキスト（BLOCKタグ含む）
   displayText: string; // UI表示用のテキスト（BLOCKタグなどを整理したもの）
   outputTemplate: string; // 最終出力用のテンプレート（BLOCKタグを除去したもの）
   defaultEnabled: boolean;
   sectionHeader?: string;
-  boundVariable?: string;
   boundVariableKey?: string;
   fallback?: string;
 }
@@ -24,6 +22,14 @@ export interface PromptVariableDefinition {
   isSectionVar: boolean;
   isRequired: boolean; // フォールバックがなく、かつセクション見出し変数ではない必須変数
 }
+
+const BULLET_PREFIX_REGEX = /^[-*+]\s+/;
+const NUMBERED_LIST_REGEX = /^\d+[.)]\s+/;
+const SECTION_VAR_LINE_REGEX = /^(#{1,6}\s+)([^{}]+?)\s*\{\{\s*([^{}]*?)\s*\}\}\s*$/;
+const CUSTOM_BLOCK_OPEN_REGEX = /^\[BLOCK(?::\s*([^\]]+))?\]$/i;
+const CUSTOM_BLOCK_CLOSE_REGEX = /^\[\/BLOCK\]$/i;
+const INLINE_VARIABLE_REGEX = /\{\{([^{}]+)\}\}/g;
+const DOUBLE_SEPARATOR_REGEX = /(?:\r?\n|^)\s*-{3,}\s*\r?\n\s*-{3,}\s*(?:\r?\n|$)/;
 
 /**
  * 変数名とフォールバック値から一意なキーを生成する
@@ -39,7 +45,7 @@ export function getVariableKey(name: string, fallback?: string): string {
  */
 export function isBulletLine(line: string): boolean {
   const trimmed = line.trim();
-  return /^[-*+]\s+/.test(trimmed) || /^\d+[.)]\s+/.test(trimmed);
+  return BULLET_PREFIX_REGEX.test(trimmed) || NUMBERED_LIST_REGEX.test(trimmed);
 }
 
 /**
@@ -81,7 +87,7 @@ export function parseSectionVarLine(line: string): {
   fallback?: string;
   sectionHeader?: string;
 } {
-  const match = line.trim().match(/^(#{1,6}\s+)(.*?)\s*\{\{\s*([^{}]*?)\s*\}\}\s*$/);
+  const match = line.trim().match(SECTION_VAR_LINE_REGEX);
   if (!match) return { isSectionVar: false };
 
   const headerPrefix = match[1];
@@ -125,13 +131,13 @@ export function extractTemplateVariableDefinitions(content: string): PromptVaria
           name: secVar.varName,
           fallback: secVar.fallback,
           isSectionVar: true,
-          isRequired: false, // セクション見出し変数は空でも削除されるだけで警告はなし
+          isRequired: false,
         });
       }
     } else {
-      const regex = /\{\{([^{}]+)\}\}/g;
+      INLINE_VARIABLE_REGEX.lastIndex = 0;
       let match: RegExpExecArray | null;
-      while ((match = regex.exec(line)) !== null) {
+      while ((match = INLINE_VARIABLE_REGEX.exec(line)) !== null) {
         const token = parseVariableToken(match[1]);
         if (token.varName) {
           const varKey = getVariableKey(token.varName, token.fallback);
@@ -142,7 +148,6 @@ export function extractTemplateVariableDefinitions(content: string): PromptVaria
               name: token.varName,
               fallback: token.fallback,
               isSectionVar: false,
-              // フォールバックがない場合それを必須の質問とする
               isRequired: token.fallback === undefined,
             });
           }
@@ -155,18 +160,11 @@ export function extractTemplateVariableDefinitions(content: string): PromptVaria
 }
 
 /**
- * テンプレート内の変数を重複なく順番通りに抽出する（変数名リスト）
- */
-export function extractTemplateVariables(content: string): string[] {
-  return extractTemplateVariableDefinitions(content).map((d) => d.name);
-}
-
-/**
  * テンプレート文字列を連動ブロック・通常行に分解する
- * 1. ```...``` (コードブロック) は自動で1つのセグメントに連動
- * 2. [BLOCK:タイトル]...[/BLOCK] または [BLOCK]...[/BLOCK] は指定された範囲で連動
- * 3. 上記以外の空行でない各行は、それぞれ1つの独立したセグメント
- * 4. 空行は直前のセグメントまたは自然な改行として扱われる（空行単体ではトグル項目にしない）
+ * 1. [BLOCK:タイトル]...[/BLOCK] または [BLOCK]...[/BLOCK] は指定された範囲で連動（トグル可能）
+ * 2. ```...``` (コードブロック) は省略不可の固定セグメント
+ * 3. セクション見出し変数行 (# タイトル {{...}}) は固定表示で未入力時に見出しごと自動削除
+ * 4. 箇条書き行は1行単位でトグル可能、それ以外の通常行は固定セグメント
  */
 export function parseTemplateSegments(
   content: string,
@@ -187,14 +185,14 @@ export function parseTemplateSegments(
     }
 
     // 1. [BLOCK:タイトル]...[/BLOCK] または [BLOCK]...[/BLOCK]
-    const customBlockMatch = line.trim().match(/^\[BLOCK(?::\s*([^\]]+))?\]$/i);
+    const customBlockMatch = line.trim().match(CUSTOM_BLOCK_OPEN_REGEX);
     if (customBlockMatch) {
       const blockTitle = customBlockMatch[1]?.trim() || "連動ブロック";
       const blockLines: string[] = [];
       i++; // [BLOCK...] の次行から探索
 
       while (i < lines.length) {
-        if (lines[i].trim().match(/^\[\/BLOCK\]$/i)) {
+        if (CUSTOM_BLOCK_CLOSE_REGEX.test(lines[i].trim())) {
           i++; // [/BLOCK] を消費
           break;
         }
@@ -211,7 +209,6 @@ export function parseTemplateSegments(
         type: "CUSTOM_BLOCK",
         isToggleable: true,
         title: blockTitle,
-        rawText: `[BLOCK:${blockTitle}]\n${outputText}\n[/BLOCK]`,
         displayText: outputText || "(空のブロック)",
         outputTemplate: outputText,
         defaultEnabled: isEnabled,
@@ -219,13 +216,9 @@ export function parseTemplateSegments(
       continue;
     }
 
-    // 2. ```...``` (コードブロック)
+    // 2. ```...``` (コードブロック: 明示的 [BLOCK] 外のため省略不可の固定要素)
     if (line.trim().startsWith("```")) {
       const codeBlockLines: string[] = [line];
-      const codeBlockLang = line.trim().slice(3).trim();
-      const blockTitle = codeBlockLang
-        ? `コードブロック (${codeBlockLang})`
-        : "コードブロック";
       i++;
 
       while (i < lines.length) {
@@ -243,9 +236,7 @@ export function parseTemplateSegments(
       segments.push({
         id: segmentId,
         type: "CODE_BLOCK",
-        isToggleable: false, // [BLOCK] で明示的に囲まれていないコードブロックは省略不可（固定）
-        title: blockTitle,
-        rawText: outputText,
+        isToggleable: false,
         displayText: outputText,
         outputTemplate: outputText,
         defaultEnabled: true,
@@ -263,14 +254,12 @@ export function parseTemplateSegments(
       segments.push({
         id: segmentId,
         type: "SECTION_VARIABLE",
-        isToggleable: false, // 箇条書きではないためトグル対象外（固定表示）
+        isToggleable: false,
         title: secVar.sectionTitle,
-        rawText: line,
         displayText,
         outputTemplate: displayText,
         defaultEnabled: true,
         sectionHeader: secVar.sectionHeader,
-        boundVariable: secVar.varName,
         boundVariableKey: secVar.varKey,
         fallback: secVar.fallback,
       });
@@ -287,7 +276,6 @@ export function parseTemplateSegments(
       id: segmentId,
       type: isBullet ? "BULLET" : "STATIC",
       isToggleable: isBullet,
-      rawText: line,
       displayText: line,
       outputTemplate: line,
       defaultEnabled: isEnabled,
@@ -317,9 +305,8 @@ export function assemblePrompt(
     }
 
     // セクション見出し変数の例外ルール
-    if (seg.type === "SECTION_VARIABLE" && seg.boundVariable) {
-      const varKey = seg.boundVariableKey ?? getVariableKey(seg.boundVariable, seg.fallback);
-      const val = variables[varKey] ?? variables[seg.boundVariable];
+    if (seg.type === "SECTION_VARIABLE" && seg.boundVariableKey) {
+      const val = variables[seg.boundVariableKey];
       // ユーザー入力値がある場合（空文字・スペースや改行のみではない）
       if (val !== undefined && val.trim().length > 0) {
         activeOutputs.push(`${seg.sectionHeader}\n${val.trim()}`);
@@ -337,19 +324,17 @@ export function assemblePrompt(
   let fullText = activeOutputs.join("\n\n");
 
   // 通常の変数 {{変数名|フォールバック}} または {{変数名}} の置換
-  fullText = fullText.replace(/\{\{([^{}]+)\}\}/g, (match, rawKey) => {
+  fullText = fullText.replace(INLINE_VARIABLE_REGEX, (match, rawKey) => {
     const token = parseVariableToken(rawKey);
     const varKey = getVariableKey(token.varName, token.fallback);
-    const val = variables[varKey] ?? variables[token.varName];
+    const val = variables[varKey];
 
     if (val !== undefined && val.trim().length > 0) {
       return val.trim();
     }
-    // 未入力だがフォールバックがある場合
     if (token.fallback !== undefined) {
       return token.fallback;
     }
-    // フォールバックもない未入力の場合はプレースホルダーのまま残す
     return match;
   });
 
@@ -359,15 +344,6 @@ export function assemblePrompt(
 /**
  * クリップボード等のテキストからテンプレート名・概要・本文を二重区切り線（--- \n ---）で分割パースする
  * 表記揺れ（#や見出し文字）に依存せず、二重の区切り線のみを確実なセパレーターとして認識
- *
- * 構成例:
- * （テンプレート名）
- * ---
- * ---
- * （概要・説明文）
- * ---
- * ---
- * （プロンプト本文）
  */
 export function parseTemplateClipboardText(rawText: string): {
   isStructured: boolean;
@@ -380,13 +356,9 @@ export function parseTemplateClipboardText(rawText: string): {
     return { isStructured: false, content: "" };
   }
 
-  // 二重区切り線: 2行連続した --- (3つ以上のハイフン)
-  const doubleSepRegex = /(?:\r?\n|^)\s*-{3,}\s*\r?\n\s*-{3,}\s*(?:\r?\n|$)/;
-
-  const parts = trimmed.split(doubleSepRegex).map((p) => p.trim());
+  const parts = trimmed.split(DOUBLE_SEPARATOR_REGEX).map((p) => p.trim());
 
   if (parts.length >= 3) {
-    // 1番目: テンプレート名, 2番目: 概要, 3番目以降: プロンプト本文
     const name = parts[0] || undefined;
     const description = parts[1] || undefined;
     const content = parts.slice(2).join("\n---\n---\n").trim();
@@ -399,7 +371,6 @@ export function parseTemplateClipboardText(rawText: string): {
   }
 
   if (parts.length === 2) {
-    // 1番目: テンプレート名, 2番目: プロンプト本文
     const name = parts[0] || undefined;
     const content = parts[1].trim();
     return {
@@ -409,7 +380,6 @@ export function parseTemplateClipboardText(rawText: string): {
     };
   }
 
-  // 二重区切り線が含まれていない場合は全体を本文とする
   return {
     isStructured: false,
     content: trimmed,

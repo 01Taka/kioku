@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import type { PromptTemplate } from "../../types/schema";
 import { parseTemplateClipboardText } from "../../utils/promptTemplateParser";
@@ -22,6 +22,13 @@ export function PromptTemplateEditModal({
   const [showGuide, setShowGuide] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importNotice, setImportNotice] = useState<string | null>(null);
+  const noticeTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+    };
+  }, []);
 
   // クリップボードから本文（および構成に応じた名前・概要）を取り込む
   const handleImportFromClipboard = async () => {
@@ -52,7 +59,8 @@ export function PromptTemplateEditModal({
       } else {
         setImportNotice("📋 クリップボードの内容を本文に取り込みました！");
       }
-      setTimeout(() => setImportNotice(null), 3500);
+      if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = window.setTimeout(() => setImportNotice(null), 3500);
     } catch (err) {
       setError(
         err instanceof Error
@@ -154,7 +162,7 @@ export function PromptTemplateEditModal({
                   setError(null);
                 }}
                 placeholder="例: 重要用語の一問一答生成"
-                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-base text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none sm:text-sm"
               />
             </div>
 
@@ -166,7 +174,7 @@ export function PromptTemplateEditModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="例: 教材のキーワード群から定義問題を自動生成します"
-                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-base text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none sm:text-xs"
               />
             </div>
 
@@ -193,7 +201,9 @@ export function PromptTemplateEditModal({
               {showGuide && (
                 <div className="animate-fadeIn mt-2 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-3 text-xs text-slate-300">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-indigo-300">💡 テンプレートの書き方・連動ルール:</span>
+                    <span className="font-semibold text-indigo-300">
+                      💡 テンプレートの書き方・連動ルール:
+                    </span>
                     <button
                       type="button"
                       onClick={() => setShowGuide(false)}
@@ -202,26 +212,46 @@ export function PromptTemplateEditModal({
                       <XIcon size={14} />
                     </button>
                   </div>
-                  <ul className="mt-1.5 space-y-1 text-[11px] text-slate-300/90 list-disc list-inside">
+                  <ul className="mt-1.5 list-inside list-disc space-y-1 text-[11px] text-slate-300/90">
                     <li>
                       <span className="font-medium text-slate-200">一括取り込み</span>:
-                      「テンプレート名」「概要」「本文」の間を二重区切り線（<code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">---</code> が2行連続）で区切って「本文取り込み」を押すと各項目に自動反映されます。
+                      「テンプレート名」「概要」「本文」の間を二重区切り線（
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        ---
+                      </code>{" "}
+                      が2行連続）で区切って「本文取り込み」を押すと各項目に自動反映されます。
                     </li>
                     <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">{"{{変数名}}"}</code>
-                      : 生成画面で入力フォームが自動作成され、入力値に置換されます。
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        {"{{変数名}}"}
+                      </code>{" "}
+                      /{" "}
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        {"{{変数名|既定値}}"}
+                      </code>
+                      : 入力フォームが作成されます。既定値がない変数は必須項目となり、未入力コピー時に警告されます。
                     </li>
                     <li>
-                      <span className="font-medium text-slate-200">行ごとのトグル</span>:
-                      空行以外の各行は、生成画面で個別に含める/除外を切り替えられます。
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        {"# セクション名 {{}}"}
+                      </code>
+                      : 見出しと変数をまとめ、未入力時は見出し自体も自動削除されます（
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        {"{{|既定値}}"}
+                      </code>{" "}
+                      も可）。
                     </li>
                     <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">[BLOCK:タイトル]...[/BLOCK]</code>
-                      : 複数行をひとまとめの連動ブロックとして扱います。
-                    </li>
-                    <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 text-indigo-200 font-mono">```...```</code>
-                      : コードブロックは自動的に1つのまとまりとして連動します。
+                      <span className="font-medium text-slate-200">命令のON/OFF選択</span>:
+                      詳細画面では、箇条書き行（
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        -{" "}
+                      </code>
+                      等）および{" "}
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        [BLOCK:タイトル]...[/BLOCK]
+                      </code>{" "}
+                      で囲んだ範囲のみがON/OFF切り替え可能になります。
                     </li>
                   </ul>
                 </div>
@@ -234,8 +264,8 @@ export function PromptTemplateEditModal({
                   setError(null);
                 }}
                 rows={13}
-                placeholder="プロンプト本文を入力してください。{{教材テキスト}} や [BLOCK:指示] ... [/BLOCK] が使用できます。"
-                className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                placeholder="プロンプト本文を入力してください。{{教材テキスト}} や {{問題数|10}}、# 特記事項 {{}} などが使用できます。"
+                className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-base leading-relaxed text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none sm:text-xs"
               />
             </div>
           </div>

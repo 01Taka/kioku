@@ -495,7 +495,7 @@ export function PromptManagerView() {
                                       <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-1.5">
                                           <label className="font-mono text-xs font-semibold text-indigo-300">
-                                            {`{{${def.name}}}`}
+                                            {`{{${def.isRequired ? `*${def.name}` : def.name}}}`}
                                           </label>
                                           {def.isRequired && (
                                             <span className="rounded border border-rose-500/40 bg-rose-950/60 px-1 py-px text-[9px] font-bold text-rose-300">

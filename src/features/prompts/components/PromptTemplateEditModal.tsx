@@ -231,24 +231,38 @@ export function PromptTemplateEditModal({
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        {"{{*変数名}}"}
+                      </code>
+                      : 必須変数。未入力でコピーしようとすると警告が出ます。
+                    </li>
+                    <li>
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         {"{{変数名}}"}
                       </code>{" "}
                       /{" "}
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"{{変数名|既定値}}"}
+                        {"{{変数名|}}"}
                       </code>
-                      :
-                      入力フォームが作成されます。既定値がない変数は必須項目となり、未入力コピー時に警告されます。
+                      : 省略可能変数。未入力の場合はその変数が含まれる行全体がプロンプト出力から自動的に省略されます。
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"# セクション名 {{}}"}
+                        {"{{変数名|既定値}}"}
                       </code>
-                      : 見出しと変数をまとめ、未入力時は見出し自体も自動削除されます（
+                      : 未入力時は自動的に既定値が使用されます。
+                    </li>
+                    <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"{{|既定値}}"}
-                      </code>{" "}
-                      も可）。
+                        {"((変数名))"}
+                      </code>
+                      : 行末に付与すると、その変数が省略可能かつ未入力の場合に行全体が削除されます（行末の表記は常に自動除去されます）。
+                    </li>
+                    <li>
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        {"# 見出し"}
+                      </code>
+                      :
+                      見出しから次の同等以上の見出し（または末尾）までのすべての行が変数未入力等で省略された場合、見出し自体も自動的に省略されます（配下の小見出しがすべて省略された場合も親見出しが連鎖して省略されます）。変数のない固定の行がある場合は見出しが省略されることはありません。
                     </li>
                     <li>
                       <span className="font-medium text-slate-200">命令のON/OFF選択</span>:

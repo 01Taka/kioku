@@ -10,6 +10,7 @@ import {
   MobileBottomNav,
   type NavCategory,
 } from "./components/navigation/AppNavigation";
+import { PromptManagerView } from "./components/prompts/PromptManagerView";
 import { CommonPoolSessionModal } from "./components/session/CommonPoolSessionModal";
 import { SettingsModal } from "./components/settings/SettingsModal";
 import { useAppStore } from "./store/useAppStore";
@@ -111,6 +112,8 @@ export default function App() {
               onSelectSubTab={setHomeSubTab}
               onStartCommonSession={() => setIsCommonSessionOpen(true)}
             />
+          ) : currentCategory === "PROMPTS" ? (
+            <PromptManagerView />
           ) : activeCourse ? (
             <CourseDetailView
               key={activeCourse.id}

@@ -65,6 +65,19 @@ export const FlashcardContentSchema = z.object({
 });
 export type FlashcardContent = z.infer<typeof FlashcardContentSchema>;
 
+/** AI問題生成用プロンプトテンプレート */
+export const PromptTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string().trim().min(1, "テンプレート名を入力してください"),
+  description: z.string().default(""),
+  isPreset: z.boolean().default(false),
+  content: z.string(),
+  enabledLines: z.record(z.string(), z.boolean()).optional(), // 行/ブロックIDごとのデフォルトON/OFF
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PromptTemplate = z.infer<typeof PromptTemplateSchema>;
+
 // =================================================================
 // 2. 2階層カテゴリ構造（Course ＞ Lecture）
 // =================================================================
@@ -225,6 +238,7 @@ export const AppBackupDataSchema = z.object({
   version: z.literal(1),
   exportedAt: z.string(),
   settings: AppSettingsSchema.optional(),
+  promptTemplates: z.array(PromptTemplateSchema).optional(),
   cards: z.array(ExportCardRecordSchema),
 });
 export type AppBackupData = z.infer<typeof AppBackupDataSchema>;

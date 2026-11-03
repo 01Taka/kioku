@@ -2,9 +2,9 @@ import React from "react";
 
 import { useAppStore } from "../../store/useAppStore";
 import type { Card, Course } from "../../types/schema";
-import { BookOpenIcon, ChevronDownIcon, HomeIcon, SettingsIcon } from "../icons";
+import { BookOpenIcon, ChevronDownIcon, HomeIcon, SettingsIcon, SparklesIcon } from "../icons";
 
-export type NavCategory = "HOME" | "MATERIALS";
+export type NavCategory = "HOME" | "MATERIALS" | "PROMPTS";
 export type HomeSubTab = "MAIN" | "MISTAKES" | "FORGOTTEN";
 
 interface AppNavigationProps {
@@ -207,6 +207,26 @@ export function DesktopSidebar({
               </div>
             )}
           </div>
+
+          {/* 大カテゴリー: プロンプト */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                onSelectCategory("PROMPTS");
+              }}
+              className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs font-semibold transition ${
+                currentCategory === "PROMPTS"
+                  ? "bg-indigo-600/20 text-indigo-300"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <SparklesIcon size={16} />
+                <span>プロンプト</span>
+              </div>
+            </button>
+          </div>
         </nav>
       </div>
 
@@ -259,6 +279,19 @@ export function MobileBottomNav({
       >
         <BookOpenIcon size={18} />
         <span className="mt-0.5 text-[10px] font-medium">教材</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onSelectCategory("PROMPTS")}
+        className={`flex h-full flex-1 flex-col items-center justify-center transition ${
+          currentCategory === "PROMPTS"
+            ? "text-indigo-400"
+            : "text-slate-400 hover:text-slate-200"
+        }`}
+      >
+        <SparklesIcon size={18} />
+        <span className="mt-0.5 text-[10px] font-medium">プロンプト</span>
       </button>
     </nav>
   );

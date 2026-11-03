@@ -16,6 +16,7 @@ import type {
   LectureProgress,
   LectureTrainingQueueResult,
   PriorityMode,
+  PromptTemplate,
   SessionStorageState,
 } from "../types/schema";
 import {
@@ -32,6 +33,7 @@ import {
   SYSTEM_CONSTANTS,
 } from "../types/schema";
 import { getActiveDateKey, getNextCutoffTime, isReviewedToday } from "../utils/dateUtils";
+import { PRESET_PROMPT_TEMPLATES } from "../utils/presetPromptTemplates";
 import { buildCommonPoolQueue, type CommonPoolQueueBuildResult } from "../utils/queueBuilder";
 import {
   applyLectureReviewAnswer,
@@ -73,6 +75,7 @@ interface AppState {
   courses: Course[];
   lectures: Lecture[];
   cards: Card[];
+  promptTemplates: PromptTemplate[];
   settings: AppSettings;
   sessionState: SessionStorageState;
 
@@ -85,6 +88,21 @@ interface AppState {
   // Settings & Daily Cutoff actions
   updateSettings: (updates: Partial<AppSettings>) => void;
   syncDailyCutoff: (now?: Date) => void;
+
+  // Prompt Template actions
+  addPromptTemplate: (template: {
+    name: string;
+    description?: string;
+    content: string;
+    enabledLines?: Record<string, boolean>;
+  }) => PromptTemplate;
+  updatePromptTemplate: (
+    id: string,
+    updates: Partial<Pick<PromptTemplate, "name" | "description" | "content" | "enabledLines">>,
+  ) => void;
+  deletePromptTemplate: (id: string) => void;
+  duplicatePromptTemplate: (id: string) => PromptTemplate;
+  resetPresetPromptTemplates: () => void;
 
   // Course actions
   addCourse: (name: string, priorityMode?: PriorityMode) => Course;
@@ -172,12 +190,74 @@ export const useAppStore = create<AppState>()(
       courses: [],
       lectures: [],
       cards: [],
+      promptTemplates: PRESET_PROMPT_TEMPLATES,
       settings: DEFAULT_APP_SETTINGS,
       sessionState: createDefaultSessionState(),
       selectedCourseId: null,
       lastSelectedCourseId: null,
       selectedLectureId: null,
       lastImportBatch: null,
+
+      addPromptTemplate: ({ name, description = "", content, enabledLines }) => {
+        const now = new Date().toISOString();
+        const newTemplate: PromptTemplate = {
+          id: `tpl_${generateId()}`,
+          name: name.trim(),
+          description: description.trim(),
+          isPreset: false,
+          content,
+          enabledLines,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((state) => ({
+          promptTemplates: [...state.promptTemplates, newTemplate],
+        }));
+        return newTemplate;
+      },
+
+      updatePromptTemplate: (id, updates) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          promptTemplates: state.promptTemplates.map((t) =>
+            t.id === id ? { ...t, ...updates, updatedAt: now } : t,
+          ),
+        }));
+      },
+
+      deletePromptTemplate: (id) => {
+        set((state) => ({
+          promptTemplates: state.promptTemplates.filter((t) => t.id !== id),
+        }));
+      },
+
+      duplicatePromptTemplate: (id) => {
+        const state = get();
+        const source = state.promptTemplates.find((t) => t.id === id);
+        if (!source) throw new Error("対象のテンプレートが見つかりません");
+        const now = new Date().toISOString();
+        const duplicated: PromptTemplate = {
+          ...source,
+          id: `tpl_${generateId()}`,
+          name: `${source.name} (コピー)`,
+          isPreset: false,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((s) => ({
+          promptTemplates: [...s.promptTemplates, duplicated],
+        }));
+        return duplicated;
+      },
+
+      resetPresetPromptTemplates: () => {
+        set((state) => {
+          const userTemplates = state.promptTemplates.filter((t) => !t.isPreset);
+          return {
+            promptTemplates: [...PRESET_PROMPT_TEMPLATES, ...userTemplates],
+          };
+        });
+      },
 
       updateSettings: (updates) => {
         const validated = AppSettingsSchema.partial().safeParse(updates);
@@ -635,6 +715,7 @@ export const useAppStore = create<AppState>()(
           version: 1,
           exportedAt: new Date().toISOString(),
           settings: state.settings,
+          promptTemplates: state.promptTemplates,
           cards: state.cards.map((card) => {
             const course = courseMap.get(card.courseId);
             const lecture = lectureMap.get(card.lectureId);
@@ -677,10 +758,21 @@ export const useAppStore = create<AppState>()(
           state.cards,
         );
 
+        // プロンプトテンプレートのマージ (既存テンプレートをマップし、インポートデータを上書きまたは追加)
+        let mergedTemplates = state.promptTemplates;
+        if (backup.promptTemplates && Array.isArray(backup.promptTemplates)) {
+          const tplMap = new Map(state.promptTemplates.map((t) => [t.id, t]));
+          for (const tpl of backup.promptTemplates) {
+            tplMap.set(tpl.id, tpl);
+          }
+          mergedTemplates = Array.from(tplMap.values());
+        }
+
         set({
           courses: merged.courses,
           lectures: merged.lectures,
           cards: merged.cards,
+          promptTemplates: mergedTemplates,
           settings: backup.settings ? { ...state.settings, ...backup.settings } : state.settings,
           selectedCourseId: state.selectedCourseId ?? merged.courses[0]?.id ?? null,
           selectedLectureId: state.selectedLectureId ?? merged.lectures[0]?.id ?? null,
@@ -979,6 +1071,7 @@ export const useAppStore = create<AppState>()(
         courses: state.courses,
         lectures: state.lectures,
         cards: state.cards,
+        promptTemplates: state.promptTemplates,
         settings: state.settings,
         sessionState: state.sessionState,
         selectedCourseId: state.selectedCourseId,
@@ -986,12 +1079,18 @@ export const useAppStore = create<AppState>()(
         selectedLectureId: state.selectedLectureId,
       }),
       onRehydrateStorage: () => (state) => {
-        if (!state || !Array.isArray(state.cards)) return;
+        if (!state) return;
         // 旧データスキーマからの自動正規化
-        state.cards = state.cards.map((card) => ({
-          ...card,
-          lecturePool: normalizeLecturePoolState(card.lecturePool),
-        }));
+        if (Array.isArray(state.cards)) {
+          state.cards = state.cards.map((card) => ({
+            ...card,
+            lecturePool: normalizeLecturePoolState(card.lecturePool),
+          }));
+        }
+        // テンプレートが空または未初期化ならプリセットを投入
+        if (!Array.isArray(state.promptTemplates) || state.promptTemplates.length === 0) {
+          state.promptTemplates = PRESET_PROMPT_TEMPLATES;
+        }
       },
     },
   ),

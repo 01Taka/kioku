@@ -39,7 +39,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
     setBackupNotice({
       type: "success",
-      message: `✅ 全 ${data.cards.length} 枚のカードデータを JSON ファイルにエクスポートしました。`,
+      message: `✅ 全 ${data.cards.length} 枚のカードデータおよびプロンプトテンプレート（${data.promptTemplates?.length ?? 0}件）を JSON ファイルにエクスポートしました。`,
     });
   };
 

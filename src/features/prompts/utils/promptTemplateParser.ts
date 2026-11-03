@@ -13,10 +13,10 @@ export interface TemplateSegment {
 }
 
 export interface PromptVariableDefinition {
-  key: string; // 一意キー (例: "問題数|10", "問題数|20", "問題数")
-  name: string; // 表示用変数名 (例: "問題数")
-  fallback?: string;
-  isRequired: boolean; // *変数名 で指定された必須変数
+  key: string; // 変数キー (変数名と同一)
+  name: string; // 表示用変数名
+  fallback?: string; // 未入力時の既定値（フォールバック）
+  isRequired: boolean; // 必須変数フラグ（未入力時にコピー防止）
 }
 
 const HYPHEN_BULLET_PREFIX_REGEX = /^-\s+/;
@@ -63,9 +63,8 @@ export function parseVarsBlockJson(jsonText: string): PromptVariableDefinition[]
             ? item.fallback.trim()
             : undefined;
         const isRequired = item.required === true;
-        const key = getVariableKey(name, fallback);
         defs.push({
-          key,
+          key: name,
           name,
           fallback,
           isRequired,
@@ -79,11 +78,11 @@ export function parseVarsBlockJson(jsonText: string): PromptVariableDefinition[]
 }
 
 /**
- * 変数名とフォールバック値から一意なキーを生成する
- * フォールバックが異なる変数は、同じ名前であっても異なる変数として扱う
+ * 変数名から一意なキーを生成する
  */
 export function getVariableKey(name: string, fallback?: string): string {
-  return fallback !== undefined ? `${name}|${fallback}` : name;
+  void fallback;
+  return name.trim();
 }
 
 /**
@@ -113,100 +112,68 @@ export function isAsteriskBulletLine(line: string): boolean {
 export function normalizeBulletPrefix(line: string): string {
   const trimmed = line.trim();
   if (PLUS_BULLET_PREFIX_REGEX.test(trimmed)) {
-    // 先頭のインデントを維持して「+ 」を「- 」に置換
     return line.replace(/^(\s*)\+\s+/, "$1- ");
   }
   if (ASTERISK_BULLET_PREFIX_REGEX.test(trimmed)) {
-    // 先頭のインデントを維持して「* 」を「- 」に置換
     return line.replace(/^(\s*)\*\s+/, "$1- ");
   }
   return line;
 }
 
 /**
- * {{変数名|フォールバック}} または {{*変数名}} の中身をパースする
- * - 変数名の先頭に * がある場合は必須変数 (isRequired: true)
- * - {{変数名}} または {{変数名|}} は省略可能変数 (isRequired: false)
+ * 変数トークンから変数名を取得する（後方互換用のインターフェースを維持）
  */
 export function parseVariableToken(token: string): {
   varName: string;
   fallback?: string;
   isRequired: boolean;
 } {
-  const pipeIndex = token.indexOf("|");
-  let rawName: string;
-  let fallback: string | undefined;
-
-  if (pipeIndex === -1) {
-    rawName = token.trim();
-    fallback = undefined;
-  } else {
-    rawName = token.slice(0, pipeIndex).trim();
-    const rawFallback = token.slice(pipeIndex + 1).trim();
-    fallback = rawFallback !== "" ? rawFallback : undefined;
-  }
-
-  const isRequired = rawName.startsWith("*");
-  const varName = isRequired ? rawName.slice(1).trim() : rawName;
-
   return {
-    varName,
-    fallback,
-    isRequired,
+    varName: token.trim(),
+    fallback: undefined,
+    isRequired: false,
   };
 }
 
 /**
  * テンプレート内の変数定義（名前、フォールバック、必須フラグ等）を抽出する
- * 1. 末尾等の ```vars ... ``` メタデータJSONブロックがある場合はその定義（および配列の並び順）を優先採用
+ * 1. 末尾の ```vars ... ``` メタデータJSONブロックがある場合はその定義（および配列の並び順）を優先採用
  * 2. 本文中にあって ```vars に含まれていない変数は「デフォルト設定（必須ではない・フォールバックなし）」として末尾に出現順で追加
- * 3. ```vars ブロックがない場合は、本文中の {{...}} から自動抽出（従来通りのフォールバック）
- * - 変数のフォールバックが異なる変数は同じ名前の異なる変数として扱う
- * - {{*変数名}} の形式のみ「必須の質問」とする（{{変数名}} や {{変数名|}} は省略可能）
  */
 export function extractTemplateVariableDefinitions(content: string): PromptVariableDefinition[] {
   const { body, varsJson } = extractVarsBlock(content);
   const defs: PromptVariableDefinition[] = [];
-  const seenKeys = new Set<string>();
+  const seenNames = new Set<string>();
 
   // 1. ```vars メタデータブロックがあれば優先的に登録
   if (varsJson) {
     const parsedDefs = parseVarsBlockJson(varsJson);
     if (parsedDefs) {
       for (const def of parsedDefs) {
-        if (!seenKeys.has(def.key)) {
-          seenKeys.add(def.key);
+        if (!seenNames.has(def.name)) {
+          seenNames.add(def.name);
           defs.push(def);
         }
       }
     }
   }
 
-  // 2. 本文（```vars を除いた部分）に出現する変数を走査
+  // 2. 本文に出現する変数を走査
   // メタデータ未定義の変数は「デフォルト設定（必須ではない・フォールバックなし）」として末尾に追加
   const lines = body.split(/\r?\n/);
   for (const line of lines) {
     INLINE_VARIABLE_REGEX.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = INLINE_VARIABLE_REGEX.exec(line)) !== null) {
-      const token = parseVariableToken(match[1]);
-      if (token.varName) {
-        // メタデータで定義されている場合は既に追加済みなのでスキップ
-        // メタデータがない場合はインライン指定（*や|）を尊重し、メタデータに未定義のものはデフォルト設定
-        const isFromVars = varsJson !== null && defs.some((d) => d.name === token.varName);
-        if (!isFromVars) {
-          const varKey = getVariableKey(token.varName, token.fallback);
-          if (!seenKeys.has(varKey)) {
-            seenKeys.add(varKey);
-            defs.push({
-              key: varKey,
-              name: token.varName,
-              // メタデータが存在するテンプレート内でメタデータ外に書かれた変数は「デフォルト設定（フォールバックなし・必須ではない）」
-              fallback: varsJson !== null ? undefined : token.fallback,
-              isRequired: varsJson !== null ? false : token.isRequired,
-            });
-          }
-        }
+      const varName = match[1].trim();
+      if (varName && !seenNames.has(varName)) {
+        seenNames.add(varName);
+        defs.push({
+          key: varName,
+          name: varName,
+          fallback: undefined,
+          isRequired: false,
+        });
       }
     }
   }
@@ -218,8 +185,8 @@ export function extractTemplateVariableDefinitions(content: string): PromptVaria
  * テンプレート文字列を連動ブロック・通常行に分解する
  * 1. [BLOCK:タイトル]...[/BLOCK] または [BLOCK]...[/BLOCK] は指定された範囲で連動（トグル可能）
  * 2. ```...``` (コードブロック) は省略不可の固定セグメント
- * 3. セクション見出し変数行 (# タイトル {{...}}) は固定表示で未入力時に見出しごと自動削除
- * 4. 箇条書き行は1行単位でトグル可能、それ以外の通常行は固定セグメント
+ * 3. セクション見出し行 (# タイトル) などは固定表示
+ * 4. 箇条書き行（- または +）は1行単位でトグル可能、* による箇条書きやそれ以外の通常行は固定セグメント
  */
 export function parseTemplateSegments(
   content: string,
@@ -342,8 +309,8 @@ export function parseTemplateSegments(
 /**
  * 1行のテキストを処理し、省略可能変数や末尾の ((変数名)) 条件に基づいて行を保持するか判定・変換する
  * - 行末の ((変数名)) はノイズ防止のため常に削除
- * - 省略可能変数（{{変数名}} または {{変数名|}}）が含まれ、ユーザー入力がない場合、行全体を省略（null を返す）
- * - 行末に ((変数名)) があり、その変数が省略可能かつユーザー入力がない場合、行全体を省略（null を返す）
+ * - 省略可能変数（未入力かつフォールバックなし）が含まれる場合、行全体を省略（null を返す）
+ * - 行末に ((変数名)) があり、その変数が省略可能かつ未入力の場合、行全体を省略（null を返す）
  */
 export function processTemplateLine(
   line: string,
@@ -357,27 +324,25 @@ export function processTemplateLine(
   let conditionVarName: string | null = null;
   if (condMatch) {
     conditionVarName = condMatch[1].trim();
-    // 行末の ((...)) を除去
     targetLine = targetLine.slice(0, condMatch.index);
   }
 
   // 2. 行に含まれるインライン変数 {{...}} を走査
   INLINE_VARIABLE_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
-  const lineTokens: ReturnType<typeof parseVariableToken>[] = [];
+  const lineVarNames: string[] = [];
   while ((match = INLINE_VARIABLE_REGEX.exec(targetLine)) !== null) {
-    lineTokens.push(parseVariableToken(match[1]));
+    lineVarNames.push(match[1].trim());
   }
 
   // 3. 行内の省略可能変数（!isRequired かつ fallback がないもの）の未入力判定
-  for (const token of lineTokens) {
-    const metaDef = defsMap?.get(token.varName);
-    const isRequired = metaDef ? metaDef.isRequired : token.isRequired;
-    const fallback = metaDef ? metaDef.fallback : token.fallback;
+  for (const varName of lineVarNames) {
+    const metaDef = defsMap?.get(varName);
+    const isRequired = metaDef?.isRequired ?? false;
+    const fallback = metaDef?.fallback;
 
     if (!isRequired && fallback === undefined) {
-      const varKey = metaDef ? metaDef.key : getVariableKey(token.varName, token.fallback);
-      const val = variables[varKey] ?? variables[token.varName];
+      const val = variables[varName];
       if (!val || val.trim().length === 0) {
         return null; // 省略可能変数が未入力なので行全体を省略
       }
@@ -386,15 +351,12 @@ export function processTemplateLine(
 
   // 4. 行末の ((変数名)) 条件の判定
   if (conditionVarName) {
-    const isReqToken = conditionVarName.startsWith("*");
-    const cleanName = isReqToken ? conditionVarName.slice(1).trim() : conditionVarName;
-    const metaDef = defsMap?.get(cleanName);
-    const isReq = metaDef ? metaDef.isRequired : isReqToken;
+    const metaDef = defsMap?.get(conditionVarName);
+    const isReq = metaDef?.isRequired ?? false;
 
-    // 「その変数が省略可能かつユーザーが入力を省略した場合に削除」
+    // 変数が省略可能（!isRequired）かつ未入力の場合に行全体を削除
     if (!isReq) {
-      const varKey = metaDef ? metaDef.key : getVariableKey(cleanName);
-      const val = variables[varKey] ?? variables[cleanName];
+      const val = variables[conditionVarName];
       if (!val || val.trim().length === 0) {
         return null;
       }
@@ -402,18 +364,16 @@ export function processTemplateLine(
   }
 
   // 5. 変数の実際の置換
-  const replacedLine = targetLine.replace(INLINE_VARIABLE_REGEX, (m, rawKey) => {
-    const token = parseVariableToken(rawKey);
-    const metaDef = defsMap?.get(token.varName);
-    const fallback = metaDef ? metaDef.fallback : token.fallback;
-    const varKey = metaDef ? metaDef.key : getVariableKey(token.varName, token.fallback);
-    const val = variables[varKey] ?? variables[token.varName];
+  const replacedLine = targetLine.replace(INLINE_VARIABLE_REGEX, (m, rawName) => {
+    const varName = rawName.trim();
+    const metaDef = defsMap?.get(varName);
+    const val = variables[varName];
 
     if (val !== undefined && val.trim().length > 0) {
       return val.trim();
     }
-    if (fallback !== undefined) {
-      return fallback;
+    if (metaDef?.fallback !== undefined) {
+      return metaDef.fallback;
     }
     return m;
   });

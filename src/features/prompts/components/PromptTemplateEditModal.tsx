@@ -231,30 +231,20 @@ export function PromptTemplateEditModal({
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"{{*変数名}}"}
-                      </code>
-                      : 必須変数。未入力でコピーしようとすると警告が出ます。
-                    </li>
-                    <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         {"{{変数名}}"}
-                      </code>{" "}
-                      /{" "}
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"{{変数名|}}"}
                       </code>
-                      : 省略可能変数。未入力の場合はその変数が含まれる行全体がプロンプト出力から自動的に省略されます。
+                      : 本文中に配置する変数。未入力（かつ既定値なし）の場合はその変数が含まれる行全体がプロンプト出力から自動的に省略されます。
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         {"```vars"}
                       </code>
                       :
-                      テンプレート末尾に変数メタデータを配置できます（
+                      テンプレート末尾に配置する変数メタデータ（
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         [&#123;&quot;name&quot;: &quot;変数名&quot;, &quot;required&quot;: true, &quot;fallback&quot;: &quot;既定値&quot;&#125;]
                       </code>
-                      ）。配列の記述順に従って入力フォームが並び替えられ、コピー時は本文から自動除去されます。
+                      ）。必須フラグ（コピー時警告）や既定値を指定でき、配列の記述順に従って入力フォームが並びます。メタデータに未定義の変数は「省略可能・既定値なし」として自動認識されます（出力時は```varsブロックは自動除去されます）。
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">

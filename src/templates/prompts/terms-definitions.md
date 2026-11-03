@@ -28,3 +28,10 @@
   }
 ]
 ```
+
+```vars
+[
+  { "name": "用語一覧", "required": true },
+  { "name": "分野名", "required": true }
+]
+```

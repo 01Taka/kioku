@@ -27,15 +27,6 @@ export function PromptTemplateDetailModal({
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="text-base font-bold text-white">{template.name}</h2>
-                {template.isPreset ? (
-                  <span className="rounded-full border border-indigo-500/40 bg-indigo-950/60 px-2 py-0.5 text-[10px] font-semibold text-indigo-300">
-                    プリセット
-                  </span>
-                ) : (
-                  <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
-                    ユーザー独自
-                  </span>
-                )}
               </div>
               <p className="text-xs text-slate-400">テンプレートの詳細・構成</p>
             </div>

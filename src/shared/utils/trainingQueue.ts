@@ -1,11 +1,15 @@
-import { createGraduatedFsrsCard } from "../services/fsrsService";
+import { createGraduatedFsrsCard } from "@/shared/services/fsrsService";
 import type {
   Card,
   LectureCardPhase,
   LectureCheckQueueItem,
   LectureTrainingQueueResult,
-} from "../types/schema";
-import { graduateCardToCommonPool, isWaitingCardLocked, SYSTEM_CONSTANTS } from "../types/schema";
+} from "@/shared/types/schema";
+import {
+  graduateCardToCommonPool,
+  isWaitingCardLocked,
+  SYSTEM_CONSTANTS,
+} from "@/shared/types/schema";
 
 /**
  * 講義専用プールの「チェック」モードで出題すべきカード一覧を抽出する純粋関数

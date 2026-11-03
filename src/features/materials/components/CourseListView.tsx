@@ -1,18 +1,33 @@
 import { useState } from "react";
 
-import templateMainData from "../../../templates/template-main-data.json";
-import { useAppStore } from "../../store/useAppStore";
-import type { AppBackupData } from "../../types/schema";
-import { CourseSchema, isWaitingCardLocked } from "../../types/schema";
-import { BookOpenIcon, EditIcon, MoreVerticalIcon, PlusIcon, TrashIcon } from "../icons";
+import {
+  BookOpenIcon,
+  EditIcon,
+  MoreVerticalIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { AppBackupData } from "@/shared/types/schema";
+import { CourseSchema, isWaitingCardLocked } from "@/shared/types/schema";
+
+import templateMainData from "../../../../templates/template-main-data.json";
 
 interface CourseListViewProps {
   onSelectCourse: (courseId: string) => void;
 }
 
 export function CourseListView({ onSelectCourse }: CourseListViewProps) {
-  const { courses, lectures, cards, settings, addCourse, updateCourse, deleteCourse, importBackupJson } =
-    useAppStore();
+  const {
+    courses,
+    lectures,
+    cards,
+    settings,
+    addCourse,
+    updateCourse,
+    deleteCourse,
+    importBackupJson,
+  } = useAppStore();
 
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [newCourseName, setNewCourseName] = useState("");
@@ -269,9 +284,7 @@ export function CourseListView({ onSelectCourse }: CourseListViewProps) {
               <input
                 type="text"
                 value={renamingCourse.name}
-                onChange={(e) =>
-                  setRenamingCourse({ ...renamingCourse, name: e.target.value })
-                }
+                onChange={(e) => setRenamingCourse({ ...renamingCourse, name: e.target.value })}
                 autoFocus
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-indigo-500"
               />

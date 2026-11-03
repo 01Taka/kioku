@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { PlayIcon, XIcon } from "../icons";
+import { PlayIcon, XIcon } from "@/shared/components/icons";
 
 interface HomeMistakesStartModalProps {
   onClose: () => void;

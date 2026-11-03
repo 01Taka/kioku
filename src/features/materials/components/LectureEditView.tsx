@@ -1,8 +1,5 @@
 import { useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import { type Card, FlashcardContentSchema } from "../../types/schema";
-import { AiBatchImportModal } from "../AiBatchImportModal";
 import {
   ArrowLeftIcon,
   EditIcon,
@@ -12,7 +9,11 @@ import {
   SparklesIcon,
   TrashIcon,
   UndoIcon,
-} from "../icons";
+} from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import { type Card, FlashcardContentSchema } from "@/shared/types/schema";
+
+import { AiBatchImportModal } from "./AiBatchImportModal";
 import { CardEditModal } from "./CardEditModal";
 
 interface LectureEditViewProps {

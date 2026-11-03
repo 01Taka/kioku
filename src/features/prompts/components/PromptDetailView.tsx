@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import type { PromptTemplate } from "../../types/schema";
-import {
-  assemblePrompt,
-  parseTemplateSegments,
-  type PromptVariableDefinition,
-} from "../../utils/promptTemplateParser";
 import {
   AlertCircleIcon,
   ArrowLeftIcon,
   CheckIcon,
   CopyIcon,
   EditIcon,
-} from "../icons";
+} from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { PromptTemplate } from "@/shared/types/schema";
+
+import {
+  assemblePrompt,
+  parseTemplateSegments,
+  type PromptVariableDefinition,
+} from "../utils/promptTemplateParser";
 
 interface PromptDetailViewProps {
   template: PromptTemplate;
@@ -136,9 +137,7 @@ export function PromptDetailView({
             <ArrowLeftIcon size={18} />
           </button>
 
-          <h1 className="truncate text-sm font-bold text-white sm:text-base">
-            {template.name}
-          </h1>
+          <h1 className="truncate text-sm font-bold text-white sm:text-base">{template.name}</h1>
         </div>
 
         <button

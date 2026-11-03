@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import { REVIEW_CATEGORY_THEME } from "../../types/schema";
-import { formatFutureDueNotice } from "../../utils/dateUtils";
-import type { CommonPoolQueueItem } from "../../utils/queueBuilder";
-import { UndoIcon, XIcon } from "../icons";
-import { PracticeResultView } from "../practice/PracticeResultView";
+import { UndoIcon, XIcon } from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import { REVIEW_CATEGORY_THEME } from "@/shared/types/schema";
+import { formatFutureDueNotice } from "@/shared/utils/dateUtils";
+import type { CommonPoolQueueItem } from "@/shared/utils/queueBuilder";
+
+import { PracticeResultView } from "./PracticeResultView";
 
 export interface CommonPoolSessionModalProps {
   onClose: () => void;

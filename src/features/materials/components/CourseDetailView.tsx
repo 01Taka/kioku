@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import { LectureSchema } from "../../types/schema";
-import { ArrowLeftIcon, ClipboardIcon, EditIcon, MoreVerticalIcon, PlayIcon, PlusIcon, TrashIcon } from "../icons";
-import { LecturePlayer, type PracticeCardItem } from "../practice/LecturePlayer";
+import { LecturePlayer, type PracticeCardItem } from "@/features/practice";
+import {
+  ArrowLeftIcon,
+  ClipboardIcon,
+  EditIcon,
+  MoreVerticalIcon,
+  PlayIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import { LectureSchema } from "@/shared/types/schema";
+
 import { LectureEditView } from "./LectureEditView";
 
 export type CourseTab = "CHECK" | "REVIEW" | "EDIT";
@@ -52,7 +61,9 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
     }));
     try {
       await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-      alert(`📋 講義「${targetLectureName}」の全 ${data.length} 問をクリップボードにコピーしました！`);
+      alert(
+        `📋 講義「${targetLectureName}」の全 ${data.length} 問をクリップボードにコピーしました！`,
+      );
     } catch {
       alert("クリップボードへのコピーに失敗しました。");
     }
@@ -693,7 +704,9 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
                               type="button"
                               onClick={() => {
                                 setOpenMenuLectureId(null);
-                                if (window.confirm(`講義「${lecture.name}」とカードを削除しますか？`)) {
+                                if (
+                                  window.confirm(`講義「${lecture.name}」とカードを削除しますか？`)
+                                ) {
                                   deleteLecture(lecture.id);
                                 }
                               }}
@@ -774,9 +787,7 @@ export function CourseDetailView({ courseId, onBackToCourseList }: CourseDetailV
               <input
                 type="text"
                 value={renamingLecture.name}
-                onChange={(e) =>
-                  setRenamingLecture({ ...renamingLecture, name: e.target.value })
-                }
+                onChange={(e) => setRenamingLecture({ ...renamingLecture, name: e.target.value })}
                 autoFocus
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white outline-none focus:border-indigo-500"
               />

@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
 
-import { DEFAULT_APP_SETTINGS, useAppStore } from "../../store/useAppStore";
-import { parseBackupData } from "../../types/schema";
-import { CheckIcon, SlidersIcon, XIcon } from "../icons";
+import { CheckIcon, SlidersIcon, XIcon } from "@/shared/components/icons";
+import { DEFAULT_APP_SETTINGS, useAppStore } from "@/shared/store/useAppStore";
+import { parseBackupData } from "@/shared/types/schema";
 
 export interface SettingsModalProps {
   onClose: () => void;

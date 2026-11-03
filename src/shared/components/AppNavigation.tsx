@@ -1,8 +1,14 @@
 import React from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import type { Card, Course } from "../../types/schema";
-import { BookOpenIcon, ChevronDownIcon, HomeIcon, SettingsIcon, SparklesIcon } from "../icons";
+import {
+  BookOpenIcon,
+  ChevronDownIcon,
+  HomeIcon,
+  SettingsIcon,
+  SparklesIcon,
+} from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { Card, Course } from "@/shared/types/schema";
 
 export type NavCategory = "HOME" | "MATERIALS" | "PROMPTS";
 export type HomeSubTab = "MAIN" | "MISTAKES" | "FORGOTTEN";
@@ -285,9 +291,7 @@ export function MobileBottomNav({
         type="button"
         onClick={() => onSelectCategory("PROMPTS")}
         className={`flex h-full flex-1 flex-col items-center justify-center transition ${
-          currentCategory === "PROMPTS"
-            ? "text-indigo-400"
-            : "text-slate-400 hover:text-slate-200"
+          currentCategory === "PROMPTS" ? "text-indigo-400" : "text-slate-400 hover:text-slate-200"
         }`}
       >
         <SparklesIcon size={18} />

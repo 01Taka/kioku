@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import templateMainData from "../../templates/template-main-data.json";
-import { reviewCommonPoolCard } from "../services/fsrsService";
+import { PRESET_PROMPT_TEMPLATES } from "@/features/prompts";
+import { reviewCommonPoolCard } from "@/shared/services/fsrsService";
 import type {
   ActiveRating,
   AppBackupData,
@@ -18,7 +18,7 @@ import type {
   PriorityMode,
   PromptTemplate,
   SessionStorageState,
-} from "../types/schema";
+} from "@/shared/types/schema";
 import {
   AppSettingsSchema,
   createNewCard,
@@ -31,17 +31,18 @@ import {
   parseBackupData,
   resetCardToUnattempted,
   SYSTEM_CONSTANTS,
-} from "../types/schema";
-import { getActiveDateKey, getNextCutoffTime, isReviewedToday } from "../utils/dateUtils";
-import { PRESET_PROMPT_TEMPLATES } from "../utils/presetPromptTemplates";
-import { buildCommonPoolQueue, type CommonPoolQueueBuildResult } from "../utils/queueBuilder";
+} from "@/shared/types/schema";
+import { getActiveDateKey, getNextCutoffTime, isReviewedToday } from "@/shared/utils/dateUtils";
+import { buildCommonPoolQueue, type CommonPoolQueueBuildResult } from "@/shared/utils/queueBuilder";
 import {
   applyLectureReviewAnswer,
   applyLectureTrainingAnswer,
   buildLectureTrainingQueue,
   type LectureTrainingTransitionResult,
   promoteCardToGraduate,
-} from "../utils/trainingQueue";
+} from "@/shared/utils/trainingQueue";
+
+import templateMainData from "../../../templates/template-main-data.json";
 
 export function getBatchSignature(contents: FlashcardContent[]): string {
   return contents
@@ -785,7 +786,13 @@ export const useAppStore = create<AppState>()(
         };
       },
 
-      addCardsBatch: (courseId, lectureId, contents, customBundleId, overwriteMode = "KEEP_STATE") => {
+      addCardsBatch: (
+        courseId,
+        lectureId,
+        contents,
+        customBundleId,
+        overwriteMode = "KEEP_STATE",
+      ) => {
         // Zod スキーマでカード内容を厳格バリデーション
         const parsedContents = contents
           .map((c) => FlashcardContentSchema.safeParse(c))

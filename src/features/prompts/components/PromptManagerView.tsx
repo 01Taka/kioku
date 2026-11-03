@@ -1,13 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import type { PromptTemplate } from "../../types/schema";
-import {
-  assemblePrompt,
-  extractTemplateVariableDefinitions,
-  parseTemplateSegments,
-  type PromptVariableDefinition,
-} from "../../utils/promptTemplateParser";
 import {
   AlertCircleIcon,
   CheckIcon,
@@ -21,7 +13,16 @@ import {
   RefreshCwIcon,
   TrashIcon,
   XIcon,
-} from "../icons";
+} from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { PromptTemplate } from "@/shared/types/schema";
+
+import {
+  assemblePrompt,
+  extractTemplateVariableDefinitions,
+  parseTemplateSegments,
+  type PromptVariableDefinition,
+} from "../utils/promptTemplateParser";
 import { PromptDetailView } from "./PromptDetailView";
 import { PromptTemplateEditModal } from "./PromptTemplateEditModal";
 
@@ -241,7 +242,7 @@ export function PromptManagerView() {
 
   const detailTemplate =
     activeView.type === "detail"
-      ? promptTemplates.find((t) => t.id === activeView.templateId) ?? null
+      ? (promptTemplates.find((t) => t.id === activeView.templateId) ?? null)
       : null;
 
   return (
@@ -552,10 +553,7 @@ export function PromptManagerView() {
                           {/* 警告メッセージ表示 */}
                           {copyWarning && (
                             <div className="animate-fadeIn mt-2 flex items-center space-x-1.5 rounded-lg border border-rose-500/40 bg-rose-950/70 px-2.5 py-1 text-xs text-rose-300">
-                              <AlertCircleIcon
-                                size={13}
-                                className="flex-shrink-0 text-rose-400"
-                              />
+                              <AlertCircleIcon size={13} className="flex-shrink-0 text-rose-400" />
                               <span>{copyWarning}</span>
                             </div>
                           )}

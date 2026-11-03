@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import type { PriorityMode } from "../../types/schema";
-import { PlayIcon, SlidersIcon, XIcon } from "../icons";
+import { PlayIcon, SlidersIcon, XIcon } from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { PriorityMode } from "@/shared/types/schema";
 
 interface HomeMainStartModalProps {
   onClose: () => void;

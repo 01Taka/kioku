@@ -1,4 +1,4 @@
-import { calculateCardRetrievability } from "../services/fsrsService";
+import { calculateCardRetrievability } from "@/shared/services/fsrsService";
 import type {
   AppSettings,
   Card,
@@ -6,9 +6,9 @@ import type {
   Lecture,
   PriorityMode,
   ReviewCategory,
-} from "../types/schema";
-import { SYSTEM_CONSTANTS } from "../types/schema";
-import { getCutoffTime, getNextCutoffTime, isReviewedToday } from "./dateUtils";
+} from "@/shared/types/schema";
+import { SYSTEM_CONSTANTS } from "@/shared/types/schema";
+import { getCutoffTime, getNextCutoffTime, isReviewedToday } from "@/shared/utils/dateUtils";
 
 export interface CommonPoolQueueItem {
   card: Card;

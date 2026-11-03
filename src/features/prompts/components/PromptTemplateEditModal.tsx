@@ -1,8 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 
-import type { PromptTemplate } from "../../types/schema";
-import { parseTemplateClipboardText } from "../../utils/promptTemplateParser";
-import { CheckIcon, ClipboardIcon, HelpCircleIcon, SparklesIcon, XIcon } from "../icons";
+import {
+  CheckIcon,
+  ClipboardIcon,
+  HelpCircleIcon,
+  SparklesIcon,
+  XIcon,
+} from "@/shared/components/icons";
+import type { PromptTemplate } from "@/shared/types/schema";
+
+import { parseTemplateClipboardText } from "../utils/promptTemplateParser";
 
 interface PromptTemplateEditModalProps {
   template?: PromptTemplate | null; // null/undefined の場合は新規作成
@@ -123,7 +130,8 @@ export function PromptTemplateEditModal({
                   クリップボードから本文取り込み
                 </span>
                 <p className="mt-0.5 text-[11px] text-slate-400">
-                  二重の区切り線（--- が2行連続）で区切ることで「名前」「概要」「本文」を一括入力できます。
+                  二重の区切り線（---
+                  が2行連続）で区切ることで「名前」「概要」「本文」を一括入力できます。
                 </p>
               </div>
 
@@ -229,7 +237,8 @@ export function PromptTemplateEditModal({
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
                         {"{{変数名|既定値}}"}
                       </code>
-                      : 入力フォームが作成されます。既定値がない変数は必須項目となり、未入力コピー時に警告されます。
+                      :
+                      入力フォームが作成されます。既定値がない変数は必須項目となり、未入力コピー時に警告されます。
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">

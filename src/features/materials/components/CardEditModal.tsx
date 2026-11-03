@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
-import { FlashcardContentSchema } from "../../types/schema";
-import { EditIcon, XIcon } from "../icons";
+import { EditIcon, XIcon } from "@/shared/components/icons";
+import { FlashcardContentSchema } from "@/shared/types/schema";
 
 interface CardEditModalProps {
   initialFront: string;

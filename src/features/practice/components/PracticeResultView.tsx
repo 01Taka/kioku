@@ -1,4 +1,5 @@
-import { CheckIcon, PlayIcon, UndoIcon, XIcon } from "../icons";
+import { CheckIcon, PlayIcon, UndoIcon, XIcon } from "@/shared/components/icons";
+
 import type { PracticeCardItem } from "./LecturePlayer";
 
 export interface PracticeResultViewProps {

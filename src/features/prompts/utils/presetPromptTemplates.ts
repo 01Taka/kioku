@@ -1,10 +1,11 @@
-import type { PromptTemplate } from "../types/schema";
+import type { PromptTemplate } from "@/shared/types/schema";
 
 export const PRESET_PROMPT_TEMPLATES: PromptTemplate[] = [
   {
     id: "preset-batch-generation",
     name: "教材テキストから一括問題生成（基本）",
-    description: "講義ノートや教科書テキストから、記憶定着に最適な一問一答フラッシュカードをJSON形式で一括生成します。",
+    description:
+      "講義ノートや教科書テキストから、記憶定着に最適な一問一答フラッシュカードをJSON形式で一括生成します。",
     isPreset: true,
     content: `# 指示
 あなたは学習と記憶定着の専門家です。
@@ -38,7 +39,8 @@ export const PRESET_PROMPT_TEMPLATES: PromptTemplate[] = [
   {
     id: "preset-refine-cards",
     name: "既存問題のブラッシュアップ（ID付き更新用）",
-    description: "既存のカード（ID付き）のわかりにくさや不備を改善し、学習進捗を維持したまま上書き更新できるようにします。",
+    description:
+      "既存のカード（ID付き）のわかりにくさや不備を改善し、学習進捗を維持したまま上書き更新できるようにします。",
     isPreset: true,
     content: `# 指示
 以下の【既存カードリスト(JSON)】に含まれる問題をレビューし、より能動想起しやすく、記憶定着しやすい良問へとリライト・改善してください。
@@ -73,7 +75,8 @@ export const PRESET_PROMPT_TEMPLATES: PromptTemplate[] = [
   {
     id: "preset-terms-definitions",
     name: "重要用語・定義の一問一答集生成",
-    description: "指定した用語・トピック一覧から、「用語名を見て定義を答える」または「定義から用語名を答える」精度の高い問題を生成します。",
+    description:
+      "指定した用語・トピック一覧から、「用語名を見て定義を答える」または「定義から用語名を答える」精度の高い問題を生成します。",
     isPreset: true,
     content: `# 指示
 以下の【用語・キーワード一覧】に基づいて、【{{分野名}}】に関する一問一答カードを作成してください。
@@ -105,7 +108,8 @@ export const PRESET_PROMPT_TEMPLATES: PromptTemplate[] = [
   {
     id: "preset-active-recall-rewrite",
     name: "穴埋め・選択肢からの記述化（良問リライト）",
-    description: "穴埋め問題や記号選択問題、過去問などを、ヒントがなくても頭の中から自力で想起できる良質な記述式問題に変換します。",
+    description:
+      "穴埋め問題や記号選択問題、過去問などを、ヒントがなくても頭の中から自力で想起できる良質な記述式問題に変換します。",
     isPreset: true,
     content: `# 指示
 以下の【元の問題文や試験問題】を分析し、選択肢や穴埋め特有のヒントに依存せず、能動的に知識を思い出す訓練ができるフラッシュカード問題へ変換してください。

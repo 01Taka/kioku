@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import type { LectureCheckCategory } from "../../types/schema";
-import { ShuffleIcon, XIcon } from "../icons";
+import { ShuffleIcon, XIcon } from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { LectureCheckCategory } from "@/shared/types/schema";
+
 import { PracticeResultView } from "./PracticeResultView";
 
 export interface PracticeCardItem {

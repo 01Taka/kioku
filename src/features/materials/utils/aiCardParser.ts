@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { type FlashcardContent, FlashcardContentSchema } from "../types/schema";
+import { type FlashcardContent, FlashcardContentSchema } from "@/shared/types/schema";
 
 export interface ParseResult {
   success: boolean;

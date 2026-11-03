@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useAppStore } from "../store/useAppStore";
-import type { Card } from "../types/schema";
+import { CheckIcon, ClipboardIcon, SparklesIcon, XIcon } from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+import type { Card } from "@/shared/types/schema";
+
 import { parseFlashcardsFromAI } from "../utils/aiCardParser";
-import { CheckIcon, ClipboardIcon, SparklesIcon, XIcon } from "./icons";
 
 function WarningIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
@@ -63,7 +64,9 @@ export function AiBatchImportModal({
     try {
       const text = await navigator.clipboard.readText();
       if (!text || !text.trim()) {
-        setClipboardError("クリップボードが空です。AIの出力テキストをコピーしてから再度お試しください。");
+        setClipboardError(
+          "クリップボードが空です。AIの出力テキストをコピーしてから再度お試しください。",
+        );
       } else {
         setRawText(text.trim());
       }
@@ -153,13 +156,7 @@ export function AiBatchImportModal({
     }
 
     const bundleId = customBundleId.trim() || undefined;
-    const result = addCardsBatch(
-      courseId,
-      lectureId,
-      parseResult.cards,
-      bundleId,
-      overwriteMode,
-    );
+    const result = addCardsBatch(courseId, lectureId, parseResult.cards, bundleId, overwriteMode);
 
     const totalProcessed = result.addedCards.length + result.updatedCount;
     onSuccess(result.bundleId, totalProcessed);
@@ -283,7 +280,8 @@ export function AiBatchImportModal({
                       <WarningIcon size={16} className="mt-0.5 flex-shrink-0 text-amber-400" />
                       <div>
                         <div className="font-semibold text-amber-300">
-                          ⚠️ 存在しないIDが指定されている問題があります（{cardIdAnalysis.missingCount} 件）
+                          ⚠️ 存在しないIDが指定されている問題があります（
+                          {cardIdAnalysis.missingCount} 件）
                         </div>
                         <p className="mt-0.5 text-[11px] text-amber-300/80">
                           この講義の既存カードに一致しないIDは無視され、新規カードとして新しいIDが自動採番されます。
@@ -357,7 +355,9 @@ export function AiBatchImportModal({
                               <span className="mb-0.5 block text-[10px] font-semibold text-emerald-400">
                                 解答:
                               </span>
-                              <p className="whitespace-pre-wrap text-slate-200">{item.card.answer}</p>
+                              <p className="whitespace-pre-wrap text-slate-200">
+                                {item.card.answer}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -435,15 +435,13 @@ export function AiBatchImportModal({
             {/* 既存IDを含む場合の上書きモード選択ドロップダウン */}
             {isSaveMenuOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsSaveMenuOpen(false)}
-                />
+                <div className="fixed inset-0 z-40" onClick={() => setIsSaveMenuOpen(false)} />
                 <div className="animate-fadeIn absolute right-0 bottom-full z-50 mb-2 w-80 overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 p-1.5 text-xs text-slate-200 shadow-2xl">
                   <div className="border-b border-slate-800 px-3 py-2">
                     <span className="font-bold text-white">上書き方法を選択</span>
                     <p className="mt-0.5 text-[11px] text-slate-400">
-                      一致する既存カード（{cardIdAnalysis.validCount} 件）の取り込み方を選択してください。
+                      一致する既存カード（{cardIdAnalysis.validCount}{" "}
+                      件）の取り込み方を選択してください。
                     </p>
                   </div>
                   <div className="space-y-1 p-1">

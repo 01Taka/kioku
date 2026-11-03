@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { useAppStore } from "../../store/useAppStore";
-import { PlayIcon, UndoIcon } from "../icons";
-import type { HomeSubTab } from "../navigation/AppNavigation";
-import type { PracticeCardItem } from "../practice/LecturePlayer";
-import { LecturePlayer } from "../practice/LecturePlayer";
+import type { PracticeCardItem } from "@/features/practice";
+import { LecturePlayer } from "@/features/practice";
+import type { HomeSubTab } from "@/shared/components/AppNavigation";
+import { PlayIcon, UndoIcon } from "@/shared/components/icons";
+import { useAppStore } from "@/shared/store/useAppStore";
+
 import { HomeMainStartModal } from "./HomeMainStartModal";
 import { HomeMistakesStartModal } from "./HomeMistakesStartModal";
 

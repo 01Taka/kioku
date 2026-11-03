@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { UndoIcon, XIcon } from "@/shared/components/icons";
+import { LatexText } from "@/shared/components/LatexText";
 import { useAppStore } from "@/shared/store/useAppStore";
 import { REVIEW_CATEGORY_THEME } from "@/shared/types/schema";
 import { formatFutureDueNotice } from "@/shared/utils/dateUtils";
@@ -423,16 +424,15 @@ export function CommonPoolSessionModal({
                 </div>
 
                 <div className="my-auto flex max-h-56 items-center justify-center overflow-y-auto py-4">
-                  <p
+                  <LatexText
+                    text={currentItem.card.front}
                     className={`leading-relaxed font-bold whitespace-pre-wrap text-white select-text ${
                       currentItem.card.front.length > 70 ||
                       currentItem.card.front.split("\n").length >= 3
                         ? "w-full px-2 text-left text-base sm:text-lg"
                         : "text-center text-xl sm:text-2xl"
                     }`}
-                  >
-                    {currentItem.card.front}
-                  </p>
+                  />
                 </div>
 
                 <div className="text-center text-[11px] text-slate-500">タップして解答を表示</div>
@@ -470,16 +470,15 @@ export function CommonPoolSessionModal({
                 </div>
 
                 <div className="my-auto flex max-h-56 items-center justify-center overflow-y-auto py-4">
-                  <p
+                  <LatexText
+                    text={currentItem.card.back}
                     className={`leading-relaxed font-medium whitespace-pre-wrap text-slate-100 select-text ${
                       currentItem.card.back.length > 70 ||
                       currentItem.card.back.split("\n").length >= 3
                         ? "w-full px-2 text-left text-sm sm:text-base"
                         : "text-center text-lg sm:text-xl"
                     }`}
-                  >
-                    {currentItem.card.back}
-                  </p>
+                  />
                 </div>
 
                 <div className="text-center text-[11px] text-emerald-400/80">

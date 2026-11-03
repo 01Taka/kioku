@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ShuffleIcon, XIcon } from "@/shared/components/icons";
+import { LatexText } from "@/shared/components/LatexText";
 import { useAppStore } from "@/shared/store/useAppStore";
 import type { LectureCheckCategory } from "@/shared/types/schema";
 
@@ -579,15 +580,19 @@ export function LecturePlayer({
                       {card.badge && <span className="text-slate-400">({card.badge})</span>}
                     </div>
 
-                    <p className="text-xs font-semibold whitespace-pre-wrap text-slate-100">
-                      {card.front}
-                    </p>
+                    <LatexText
+                      text={card.front}
+                      className="text-xs font-semibold whitespace-pre-wrap text-slate-100"
+                    />
 
                     <div className="mt-2 rounded-lg border border-slate-800/80 bg-slate-900/70 p-2.5">
                       <span className="mb-0.5 block text-[10px] font-bold text-slate-400">
                         正解・解説
                       </span>
-                      <p className="text-xs whitespace-pre-wrap text-emerald-300">{card.back}</p>
+                      <LatexText
+                        text={card.back}
+                        className="text-xs whitespace-pre-wrap text-emerald-300"
+                      />
                     </div>
                   </div>
                 </div>
@@ -762,15 +767,14 @@ export function LecturePlayer({
                 </div>
 
                 <div className="my-auto flex max-h-56 items-center justify-center overflow-y-auto py-4">
-                  <p
+                  <LatexText
+                    text={currentCard.front}
                     className={`leading-relaxed font-bold whitespace-pre-wrap text-white select-text ${
                       currentCard.front.length > 70 || currentCard.front.split("\n").length >= 3
                         ? "w-full px-2 text-left text-base sm:text-lg"
                         : "text-center text-xl sm:text-2xl"
                     }`}
-                  >
-                    {currentCard.front}
-                  </p>
+                  />
                 </div>
 
                 <div className="text-center text-[11px] text-slate-500">タップして解答を表示</div>
@@ -801,15 +805,14 @@ export function LecturePlayer({
                 </div>
 
                 <div className="my-auto flex max-h-56 items-center justify-center overflow-y-auto py-4">
-                  <p
+                  <LatexText
+                    text={currentCard.back}
                     className={`leading-relaxed font-medium whitespace-pre-wrap text-slate-100 select-text ${
                       currentCard.back.length > 70 || currentCard.back.split("\n").length >= 3
                         ? "w-full px-2 text-left text-sm sm:text-base"
                         : "text-center text-lg sm:text-xl"
                     }`}
-                  >
-                    {currentCard.back}
-                  </p>
+                  />
                 </div>
 
                 <div className="text-center text-[11px] text-indigo-400/80">

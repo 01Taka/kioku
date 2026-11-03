@@ -10,6 +10,9 @@ importers:
       "@tailwindcss/vite":
         specifier: ^4.3.3
         version: 4.3.3(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0))
+      katex:
+        specifier: ^0.19.1
+        version: 0.19.1
       react:
         specifier: ^19.2.8
         version: 19.3.1
@@ -32,6 +35,9 @@ importers:
       "@eslint/js":
         specifier: 10.0.1
         version: 10.0.1(eslint@10.13.0(jiti@2.7.0))
+      "@types/katex":
+        specifier: ^0.16.8
+        version: 0.16.8
       "@types/node":
         specifier: ^24.13.3
         version: 24.19.2
@@ -839,6 +845,12 @@ packages:
         integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==,
       }
 
+  "@types/katex@0.16.8":
+    resolution:
+      {
+        integrity: sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg==,
+      }
+
   "@types/node@24.19.2":
     resolution:
       {
@@ -1030,6 +1042,13 @@ packages:
       {
         integrity: sha512-LFUqIIAwpzsIuevnKnsR9qnStBcgzPShTX61lBwN9uFkkf8o8zLiebEjbW8AYtZiF+1YKDWfdt/pWDtMuG8Xwg==,
       }
+
+  commander@15.0.0:
+    resolution:
+      {
+        integrity: sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg==,
+      }
+    engines: { node: ">=22.12.0" }
 
   convert-source-map@2.0.0:
     resolution:
@@ -1397,6 +1416,13 @@ packages:
         integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==,
       }
     engines: { node: ">=6" }
+    hasBin: true
+
+  katex@0.19.1:
+    resolution:
+      {
+        integrity: sha512-jG8uKntjSEcm2EpQOh0XturpPuuC9r3Sq5HLHdsFdWZT27E672SF19QEi+of0/YeOy15lDgRhKvr5614uRrEfA==,
+      }
     hasBin: true
 
   keyv@5.6.0:
@@ -2470,6 +2496,8 @@ snapshots:
 
   "@types/json-schema@7.0.15": {}
 
+  "@types/katex@0.16.8": {}
+
   "@types/node@24.19.2":
     dependencies:
       undici-types: 7.24.6
@@ -2616,6 +2644,8 @@ snapshots:
       qified: 0.10.1
 
   caniuse-lite@1.0.30001819: {}
+
+  commander@15.0.0: {}
 
   convert-source-map@2.0.0: {}
 
@@ -2810,6 +2840,10 @@ snapshots:
   json-stable-stringify-without-jsonify@1.0.1: {}
 
   json5@2.2.3: {}
+
+  katex@0.19.1:
+    dependencies:
+      commander: 15.0.0
 
   keyv@5.6.0:
     dependencies:

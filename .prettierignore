@@ -1,0 +1,6 @@
+# Build & dependencies
+dist/
+node_modules/
+
+# Templates & prompts
+src/templates/prompts/

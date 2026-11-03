@@ -296,7 +296,7 @@ export function PromptDetailView({
               </div>
             </div>
 
-            <div className="mt-2.5 max-h-64 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-200">
+            <div className="mt-2.5 rounded-xl border border-slate-800 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-200">
               {finalPrompt.trim() ? (
                 <pre className="whitespace-pre-wrap">{finalPrompt}</pre>
               ) : (

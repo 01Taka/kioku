@@ -3,12 +3,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   CheckIcon,
   ClipboardIcon,
-  HelpCircleIcon,
+  CopyIcon,
   SparklesIcon,
   XIcon,
 } from "@/shared/components/icons";
 import type { PromptTemplate } from "@/shared/types/schema";
 
+import generateRulesContent from "../../../templates/prompts/rules/generate-rules.md?raw";
 import { parseTemplateClipboardText } from "../utils/promptTemplateParser";
 
 interface PromptTemplateEditModalProps {
@@ -26,16 +27,27 @@ export function PromptTemplateEditModal({
   const [name, setName] = useState(template?.name ?? "");
   const [description, setDescription] = useState(template?.description ?? "");
   const [content, setContent] = useState(template?.content ?? "");
-  const [showGuide, setShowGuide] = useState(false);
+  const [isRulesCopied, setIsRulesCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
+  const rulesCopyTimerRef = useRef<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     return () => {
       if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+      if (rulesCopyTimerRef.current) window.clearTimeout(rulesCopyTimerRef.current);
     };
   }, []);
+
+  // プロンプト本文の入力に合わせて高さを自動拡張し、内部スクロール（個別スライド）を防止
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.max(260, textareaRef.current.scrollHeight)}px`;
+    }
+  }, [content]);
 
   // クリップボードから本文（および構成に応じた名前・概要）を取り込む
   const handleImportFromClipboard = async () => {
@@ -74,6 +86,19 @@ export function PromptTemplateEditModal({
           ? err.message
           : "クリップボードの読み取りに失敗しました。アクセス許可をご確認ください。",
       );
+    }
+  };
+
+  // generate-rules.md の内容をクリップボードにコピー
+  const handleCopyRules = async () => {
+    try {
+      await navigator.clipboard.writeText(generateRulesContent);
+      setIsRulesCopied(true);
+      if (rulesCopyTimerRef.current) window.clearTimeout(rulesCopyTimerRef.current);
+      rulesCopyTimerRef.current = window.setTimeout(() => setIsRulesCopied(false), 2000);
+    } catch (err) {
+      console.error("ルールコピー失敗:", err);
+      setError("ルールのコピーに失敗しました。");
     }
   };
 
@@ -123,25 +148,16 @@ export function PromptTemplateEditModal({
         {/* フォーム本文 */}
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 space-y-4 overflow-y-auto p-5">
-            {/* 一番上: 本文取り込みカード */}
-            <div className="flex flex-col items-center justify-between gap-3 rounded-2xl border border-dashed border-indigo-500/40 bg-indigo-950/20 p-3.5 sm:flex-row">
-              <div className="text-center sm:text-left">
-                <span className="text-xs font-bold text-slate-200">
-                  クリップボードから本文取り込み
-                </span>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  二重の区切り線（---
-                  が2行連続）で区切ることで「名前」「概要」「本文」を一括入力できます。
-                </p>
-              </div>
-
+            {/* 一番上: 本文取り込みボタン（説明文は撤廃し右寄せのすっきりしたボタンに） */}
+            <div className="flex items-center justify-end">
               <button
                 type="button"
                 onClick={handleImportFromClipboard}
-                className="flex cursor-pointer items-center space-x-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-indigo-600/30 transition hover:bg-indigo-500"
+                className="flex cursor-pointer items-center space-x-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/40 px-3.5 py-1.5 text-xs font-semibold text-indigo-300 shadow-sm transition hover:bg-indigo-900/60 hover:text-white"
+                title="クリップボードのテキストを一括取り込み"
               >
                 <ClipboardIcon size={15} />
-                <span>本文取り込み</span>
+                <span>クリップボードから本文取り込み</span>
               </button>
             </div>
 
@@ -189,109 +205,44 @@ export function PromptTemplateEditModal({
             {/* プロンプト本文 */}
             <div className="flex flex-1 flex-col">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5">
-                  <label className="text-xs font-semibold text-slate-300">
-                    プロンプト本文 <span className="text-rose-400">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowGuide((prev) => !prev)}
-                    className="flex cursor-pointer items-center space-x-1 rounded-full border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-slate-400 transition hover:border-indigo-500/50 hover:bg-slate-700 hover:text-indigo-300"
-                    title="書き方・連動ルールの表示/非表示"
-                  >
-                    <HelpCircleIcon size={12} />
-                    <span>書き方・連動ルール</span>
-                  </button>
-                </div>
+                <label className="text-xs font-semibold text-slate-300">
+                  プロンプト本文 <span className="text-rose-400">*</span>
+                </label>
+
+                {/* generate-rules.md コピーボタン */}
+                <button
+                  type="button"
+                  onClick={handleCopyRules}
+                  className={`flex cursor-pointer items-center space-x-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                    isRulesCopied
+                      ? "border-emerald-500/50 bg-emerald-950/80 text-emerald-300"
+                      : "border-slate-700 bg-slate-800/80 text-slate-300 hover:border-indigo-500/50 hover:bg-slate-700 hover:text-white"
+                  }`}
+                  title="AIプロンプト作成用のルール（generate-rules.md）をコピー"
+                >
+                  {isRulesCopied ? (
+                    <>
+                      <CheckIcon size={13} className="text-emerald-400" />
+                      <span>ルールをコピーしました</span>
+                    </>
+                  ) : (
+                    <>
+                      <CopyIcon size={13} />
+                      <span>ルールをコピー</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              {/* [?] アイコンから開閉される記法ガイド */}
-              {showGuide && (
-                <div className="animate-fadeIn mt-2 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-3 text-xs text-slate-300">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-indigo-300">
-                      💡 テンプレートの書き方・連動ルール:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowGuide(false)}
-                      className="cursor-pointer text-slate-500 hover:text-slate-300"
-                    >
-                      <XIcon size={14} />
-                    </button>
-                  </div>
-                  <ul className="mt-1.5 list-inside list-disc space-y-1 text-[11px] text-slate-300/90">
-                    <li>
-                      <span className="font-medium text-slate-200">一括取り込み</span>:
-                      「テンプレート名」「概要」「本文」の間を二重区切り線（
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        ---
-                      </code>{" "}
-                      が2行連続）で区切って「本文取り込み」を押すと各項目に自動反映されます。
-                    </li>
-                    <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"{{変数名}}"}
-                      </code>
-                      : 本文中に配置する変数。未入力（かつ既定値なし）の場合はその変数が含まれる行全体がプロンプト出力から自動的に省略されます。
-                    </li>
-                    <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"```vars"}
-                      </code>
-                      :
-                      テンプレート末尾に配置する変数メタデータ（
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        [&#123;&quot;name&quot;: &quot;変数名&quot;, &quot;required&quot;: true, &quot;fallback&quot;: &quot;既定値&quot;&#125;]
-                      </code>
-                      ）。必須フラグ（コピー時警告）や既定値を指定でき、配列の記述順に従って入力フォームが並びます。メタデータに未定義の変数は「省略可能・既定値なし」として自動認識されます（出力時は```varsブロックは自動除去されます）。
-                    </li>
-                    <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"((変数名))"}
-                      </code>
-                      : 行末に付与すると、その変数が省略可能かつ未入力の場合に行全体が削除されます（行末の表記は常に自動除去されます）。
-                    </li>
-                    <li>
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"# 見出し"}
-                      </code>
-                      :
-                      見出しから次の同等以上の見出し（または末尾）までのすべての行が変数未入力等で省略された場合、見出し自体も自動的に省略されます（配下の小見出しがすべて省略された場合も親見出しが連鎖して省略されます）。変数のない固定の行がある場合は見出しが省略されることはありません。
-                    </li>
-                    <li>
-                      <span className="font-medium text-slate-200">命令のON/OFF選択（リスト仕様）</span>:
-                      詳細画面では、ハイフン（
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        -{" "}
-                      </code>
-                      ）は<span className="text-emerald-300">デフォルトONの省略可能ルール</span>、プラス（
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        +{" "}
-                      </code>
-                      ）は<span className="text-amber-300">デフォルトOFFの省略可能ルール</span>（ONにすると出力時は「- 」に変換）、アスタリスク（
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        *{" "}
-                      </code>
-                      ）は<span className="text-indigo-300">省略不可の固定ルール</span>（出力時は「- 」に変換）となります。また{" "}
-                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        [BLOCK:タイトル]...[/BLOCK]
-                      </code>{" "}
-                      で囲んだ範囲もまとめてトグル可能です。
-                    </li>
-                  </ul>
-                </div>
-              )}
-
               <textarea
+                ref={textareaRef}
                 value={content}
                 onChange={(e) => {
                   setContent(e.target.value);
                   setError(null);
                 }}
-                rows={13}
-                placeholder="プロンプト本文を入力してください。{{教材テキスト}} や {{問題数|10}}、# 特記事項 {{}} などが使用できます。"
-                className="mt-1.5 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-base leading-relaxed text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none sm:text-xs"
+                placeholder="プロンプト本文を入力してください。{{教材テキスト}} や {{問題数}}、末尾の ```vars メタデータなどが使用できます。"
+                className="mt-1.5 w-full resize-none overflow-hidden rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-base leading-relaxed text-slate-100 placeholder-slate-500 focus:border-indigo-500 focus:outline-none sm:text-xs"
               />
             </div>
           </div>

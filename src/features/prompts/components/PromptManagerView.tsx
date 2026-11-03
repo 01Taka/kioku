@@ -216,7 +216,7 @@ export function PromptManagerView() {
 
     const segments = parseTemplateSegments(tpl.content, tpl.enabledLines);
     const activeIds = new Set(segments.filter((s) => s.defaultEnabled).map((s) => s.id));
-    const text = assemblePrompt(segments, activeIds, variableValues);
+    const text = assemblePrompt(segments, activeIds, variableValues, defs);
 
     try {
       await navigator.clipboard.writeText(text);

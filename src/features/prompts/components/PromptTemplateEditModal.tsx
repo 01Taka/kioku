@@ -247,9 +247,14 @@ export function PromptTemplateEditModal({
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
-                        {"{{変数名|既定値}}"}
+                        {"```vars"}
                       </code>
-                      : 未入力時は自動的に既定値が使用されます。
+                      :
+                      テンプレート末尾に変数メタデータを配置できます（
+                      <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">
+                        [&#123;&quot;name&quot;: &quot;変数名&quot;, &quot;required&quot;: true, &quot;fallback&quot;: &quot;既定値&quot;&#125;]
+                      </code>
+                      ）。配列の記述順に従って入力フォームが並び替えられ、コピー時は本文から自動除去されます。
                     </li>
                     <li>
                       <code className="rounded bg-slate-800 px-1 py-0.5 font-mono text-indigo-200">

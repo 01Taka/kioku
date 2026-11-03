@@ -101,8 +101,8 @@ export function PromptDetailView({
 
   // 完成プロンプトの組み立て
   const finalPrompt = useMemo(() => {
-    return assemblePrompt(segments, activeSegmentIds, variableValues);
-  }, [segments, activeSegmentIds, variableValues]);
+    return assemblePrompt(segments, activeSegmentIds, variableValues, variableDefs);
+  }, [segments, activeSegmentIds, variableValues, variableDefs]);
 
   // コピー処理
   const handleCopy = async () => {

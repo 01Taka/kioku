@@ -46,7 +46,7 @@ export const LatexText: React.FC<LatexTextProps> = React.memo(function LatexText
         return (
           <div
             key={index}
-            className="my-2 max-w-full overflow-x-auto py-1 text-center"
+            className="my-2 max-w-full overflow-x-auto overflow-y-hidden py-1 text-center"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );
@@ -60,7 +60,7 @@ export const LatexText: React.FC<LatexTextProps> = React.memo(function LatexText
         return (
           <span
             key={index}
-            className="inline-block max-w-full overflow-x-auto px-0.5 align-middle"
+            className="inline-block max-w-full px-0.5 align-middle"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         );
